@@ -48,7 +48,7 @@
 
 	function command() {
 		if (mode === 'demo') return `curl -fsSL ${origin}/demo.now | sh`;
-		if (mode === 'simple') return `curl -fsSL ${origin} | sh`;
+		if (mode === 'simple') return `curl -fsSL ${origin} | sh -s -- install`;
 
 		const parts: string[] = [];
 		if (host) parts.push(host);
@@ -64,7 +64,7 @@
 		}
 
 		let s = `<span style="color:#555">curl -fsSL ${origin} | sh</span>`;
-		if (mode === 'simple') return s;
+		if (mode === 'simple') return s + `<span style="color:#555"> -s --</span> <span style="color:#eee">install</span>`;
 
 		if (host || agent || (client && client !== 'cli')) {
 			s += `<span style="color:#555"> -s --</span>`;
@@ -98,7 +98,6 @@
 			<div class="mode-row">
 				<button class="mode-btn" class:active={mode === 'demo'} onclick={() => mode = 'demo'}>
 					try
-					<span class="mode-hint">use our keys</span>
 				</button>
 				<button class="mode-btn" class:active={mode === 'simple'} onclick={() => mode = 'simple'}>
 					install
@@ -119,7 +118,19 @@
 
 			{#if mode === 'demo'}
 				<div class="demo-info">
-					<p>sprites + claude code — no keys needed</p>
+					<p>instant running claude code agent on sprites</p>
+				</div>
+			{/if}
+
+			{#if mode === 'simple'}
+				<div class="demo-info">
+					<p>install nowbox in your environment</p>
+				</div>
+			{/if}
+
+			{#if mode === 'customize'}
+				<div class="demo-info">
+					<p>try different configurations</p>
 				</div>
 			{/if}
 
@@ -259,15 +270,7 @@
 		border-left-color: #eee;
 	}
 
-	.mode-hint {
-		font-size: 10px;
-		color: #555;
-		opacity: 0.7;
-	}
 
-	.mode-btn.active .mode-hint {
-		color: #888;
-	}
 
 	.cmd-row {
 		display: flex;
