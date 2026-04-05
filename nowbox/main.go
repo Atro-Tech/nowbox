@@ -38,17 +38,17 @@ func prompt(label string) string {
 
 func promptHidden(label string) string {
 	fmt.Fprintf(os.Stderr, "%s", label)
-	f, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-	b, err := term.ReadPassword(int(f.Fd()))
+	// Read from /dev/tty as a line — strip any non-printable chars
+	// that terminal emulators inject on focus/click events
+	line, _ := ttyReader.ReadString('\n')
+	clean := strings.Map(func(r rune) rune {
+		if r >= 32 && r < 127 {
+			return r
+		}
+		return -1
+	}, line)
 	fmt.Fprintf(os.Stderr, "\n")
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(b))
+	return strings.TrimSpace(clean)
 }
 
 func main() {
