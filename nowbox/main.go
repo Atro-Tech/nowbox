@@ -365,7 +365,14 @@ func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, v
 	sessionName := names.Generate()
 	filename := sessionName + ".now"
 
-	script := fmt.Sprintf("#!/bin/sh\nexec nowbox --token \"%s\" \"$@\"\n", sealed)
+	script := fmt.Sprintf(`#!/bin/sh
+# nowbox session — %s + %s
+export NOWBOX_TOKEN="%s"
+BIN="${NOWBOX_CACHE_DIR:-$HOME/.cache/nowbox}/nowbox"
+if [ -x "$BIN" ]; then exec "$BIN" "$@" </dev/tty; fi
+if command -v nowbox >/dev/null 2>&1; then exec nowbox "$@" </dev/tty; fi
+curl -fsSL nowbox.lol | sh -s -- "$@"
+`, host.Name, agent.Name, sealed)
 
 	if err := os.WriteFile(filename, []byte(script), 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "nowbox: failed to write %s: %v\n", filename, err)
@@ -374,7 +381,6 @@ func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, v
 
 	fmt.Fprintf(os.Stderr, "  created: %s\n", filename)
 	fmt.Fprintf(os.Stderr, "  run:     sh %s\n", filename)
-	fmt.Fprintf(os.Stderr, "  or:      nowbox %s\n", filename)
 }
 
 func loadToken(tok string, hostName *string, agentName *string) {
