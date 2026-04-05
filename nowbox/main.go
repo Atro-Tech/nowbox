@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/nowbox/nowbox/internal/appui"
 	"github.com/nowbox/nowbox/internal/manifest"
@@ -144,34 +145,22 @@ func main() {
 		}
 	}
 
-	// If no host specified, prompt (interactive picker is later — for now just ask)
 	if hostName == "" {
 		hosts := manifest.ListHosts()
 		if len(hosts) == 0 {
 			fmt.Fprintf(os.Stderr, "nowbox: no hosts available\n")
 			os.Exit(1)
 		}
-		fmt.Fprintf(os.Stderr, "nowbox: available hosts:\n")
-		for i, h := range hosts {
-			fmt.Fprintf(os.Stderr, "  [%d] %s — %s\n", i+1, h.Name, h.Description)
-		}
-		hostName = prompt("host: ")
-		hostName = resolveChoice(hostName, indexNames(hosts))
+		hostName = pick("host", hosts)
 	}
 
-	// If no agent specified, prompt
 	if agentName == "" {
 		agents := manifest.ListAgents()
 		if len(agents) == 0 {
 			fmt.Fprintf(os.Stderr, "nowbox: no agents available\n")
 			os.Exit(1)
 		}
-		fmt.Fprintf(os.Stderr, "nowbox: available agents:\n")
-		for i, a := range agents {
-			fmt.Fprintf(os.Stderr, "  [%d] %s — %s\n", i+1, a.Name, a.Description)
-		}
-		agentName = prompt("agent: ")
-		agentName = resolveChoice(agentName, indexNames(agents))
+		agentName = pick("agent", agents)
 	}
 
 	// Load manifests
@@ -219,16 +208,39 @@ func main() {
 		os.Exit(130)
 	}()
 
-	// Send agent setup commands
+	// Send agent setup commands — drain output so user doesn't see shell noise
 	if len(agent.Setup.Commands) > 0 {
 		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
+
+		// Drain PTY output in background during setup
+		setupDone := make(chan struct{})
+		go func() {
+			buf := make([]byte, 4096)
+			for {
+				select {
+				case <-setupDone:
+					return
+				default:
+				}
+				sess.Stream.Read(buf)
+			}
+		}()
+
 		for _, cmd := range agent.Setup.Commands {
 			if _, err := sess.Stream.Write([]byte(cmd + "\n")); err != nil {
+				close(setupDone)
 				fmt.Fprintf(os.Stderr, "nowbox: setup failed: %v\n", err)
 				sess.Destroy()
 				os.Exit(1)
 			}
 		}
+
+		// Wait for the agent to start — give it time to initialize
+		time.Sleep(3 * time.Second)
+		close(setupDone)
+
+		// Clear screen so user only sees the agent
+		fmt.Fprintf(os.Stdout, "\033[2J\033[H")
 	}
 
 	fmt.Fprintf(os.Stderr, "  ready\n")
@@ -352,6 +364,108 @@ func loadToken(tok string, hostName *string, agentName *string) {
 	for k, v := range p.Vars {
 		os.Setenv(k, v)
 	}
+}
+
+// pick renders an interactive arrow-key picker on /dev/tty.
+// Returns the selected item name.
+func pick(label string, items []manifest.IndexEntry) string {
+	ttyFile, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		// Fall back to numbered list
+		fmt.Fprintf(os.Stderr, "%s:\n", label)
+		for i, item := range items {
+			fmt.Fprintf(os.Stderr, "  [%d] %s — %s\n", i+1, item.Name, item.Description)
+		}
+		choice := prompt(label + ": ")
+		return resolveChoice(choice, indexNames(items))
+	}
+
+	oldState, err := term.MakeRaw(int(ttyFile.Fd()))
+	if err != nil {
+		ttyFile.Close()
+		choice := prompt(label + ": ")
+		return resolveChoice(choice, indexNames(items))
+	}
+
+	selected := 0
+	buf := make([]byte, 3)
+
+	render := func() {
+		// Move to start and clear
+		fmt.Fprintf(os.Stderr, "\r\033[K  %s\r\n", label)
+		for i, item := range items {
+			if i == selected {
+				fmt.Fprintf(os.Stderr, "\033[K  \033[1m❯ %s\033[0m  %s\r\n", item.Name, item.Description)
+			} else {
+				fmt.Fprintf(os.Stderr, "\033[K    %s  \033[90m%s\033[0m\r\n", item.Name, item.Description)
+			}
+		}
+		// Move cursor back up
+		for range items {
+			fmt.Fprintf(os.Stderr, "\033[A")
+		}
+		fmt.Fprintf(os.Stderr, "\033[A")
+	}
+
+	render()
+
+	for {
+		n, err := ttyFile.Read(buf)
+		if err != nil || n == 0 {
+			break
+		}
+
+		if n == 1 {
+			switch buf[0] {
+			case '\r', '\n': // Enter
+				term.Restore(int(ttyFile.Fd()), oldState)
+				ttyFile.Close()
+				// Clear the picker
+				fmt.Fprintf(os.Stderr, "\r\033[K")
+				for range items {
+					fmt.Fprintf(os.Stderr, "\033[B\033[K")
+				}
+				// Move back up and show selection
+				for range items {
+					fmt.Fprintf(os.Stderr, "\033[A")
+				}
+				fmt.Fprintf(os.Stderr, "\r\033[K  %s: %s\r\n", label, items[selected].Name)
+				return items[selected].Name
+			case 'j', 'J': // vim down
+				if selected < len(items)-1 {
+					selected++
+					render()
+				}
+			case 'k', 'K': // vim up
+				if selected > 0 {
+					selected--
+					render()
+				}
+			case 'q', 3: // q or ctrl-c
+				term.Restore(int(ttyFile.Fd()), oldState)
+				ttyFile.Close()
+				fmt.Fprintf(os.Stderr, "\r\n")
+				os.Exit(0)
+			}
+		} else if n == 3 && buf[0] == '\033' && buf[1] == '[' {
+			switch buf[2] {
+			case 'A': // Up arrow
+				if selected > 0 {
+					selected--
+					render()
+				}
+			case 'B': // Down arrow
+				if selected < len(items)-1 {
+					selected++
+					render()
+				}
+			}
+		}
+	}
+
+	term.Restore(int(ttyFile.Fd()), oldState)
+	ttyFile.Close()
+	return items[selected].Name
 }
 
 func indexNames(entries []manifest.IndexEntry) []string {

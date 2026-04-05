@@ -4,8 +4,8 @@ description = "Claude Code (Anthropic)"
 [setup]
 commands = [
   "which claude || npm install -g @anthropic-ai/claude-code",
-  "mkdir -p ~/.claude && echo '{\"skipDangerousModePermissionPrompt\":true}' > ~/.claude/settings.json",
-  "echo '{\"hasCompletedOnboarding\":true,\"projects\":{\"/root\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true}}}' > ~/.claude.json",
+  "mkdir -p ~/.claude && echo '{\"bypassPermissionsModeAccepted\":true,\"skipDangerousModePermissionPrompt\":true}' > ~/.claude/settings.json",
+  "echo '{\"hasCompletedOnboarding\":true,\"projects\":{\"/root\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true,\"allowedTools\":[\"*\"]},\"/home/sprite\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true,\"allowedTools\":[\"*\"]}}}' > ~/.claude.json",
   "claude --dangerously-skip-permissions"
 ]
 

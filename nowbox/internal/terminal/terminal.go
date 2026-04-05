@@ -3,11 +3,16 @@ package terminal
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/nowbox/nowbox/internal/adapter"
 	"golang.org/x/term"
 )
+
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
+}
 
 func Proxy(stream adapter.Stream, sessionName string, hostAgent string) error {
 	fd := int(os.Stdin.Fd())
@@ -34,7 +39,8 @@ func Proxy(stream adapter.Stream, sessionName string, hostAgent string) error {
 	var once sync.Once
 	finish := func() { once.Do(func() { close(done) }) }
 
-	// Remote → stdout
+	// Remote → stdout, detect agent exit
+	agentRunning := true
 	go func() {
 		buf := make([]byte, 32*1024)
 		count := 0
@@ -45,6 +51,16 @@ func Proxy(stream adapter.Stream, sessionName string, hostAgent string) error {
 				count++
 				if count%50 == 0 {
 					setTitle()
+				}
+
+				// Detect alt-screen exit (agent like Claude Code exited)
+				// \033[?1049l is the "exit alt screen" sequence
+				chunk := string(buf[:n])
+				if agentRunning && contains(chunk, "\033[?1049l") {
+					agentRunning = false
+					// Agent exited — tear down
+					finish()
+					return
 				}
 			}
 			if err != nil {
