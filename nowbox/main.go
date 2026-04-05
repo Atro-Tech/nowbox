@@ -13,6 +13,7 @@ import (
 	"github.com/nowbox/nowbox/internal/manifest"
 	"github.com/nowbox/nowbox/internal/session"
 	"github.com/nowbox/nowbox/internal/terminal"
+	"github.com/nowbox/nowbox/internal/token"
 	"github.com/nowbox/nowbox/internal/webui"
 	"golang.org/x/term"
 )
@@ -63,6 +64,7 @@ func main() {
 
 	// Positional args: nowbox sprites claude web
 	args := flag.Args()
+
 	if hostName == "" && len(args) > 0 {
 		hostName = args[0]
 	}
@@ -71,6 +73,24 @@ func main() {
 	}
 	if len(args) > 2 {
 		clientMode = args[2]
+	}
+
+	// If a .now token is present, decrypt it and inject vars + args
+	if tok := os.Getenv("NOWBOX_TOKEN"); tok != "" {
+		payload, err := token.Open(tok)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "nowbox: %v\n", err)
+			os.Exit(1)
+		}
+		if payload.Host != "" && hostName == "" {
+			hostName = payload.Host
+		}
+		if payload.Agent != "" && agentName == "" {
+			agentName = payload.Agent
+		}
+		for k, v := range payload.Vars {
+			os.Setenv(k, v)
+		}
 	}
 
 	initTTY()
@@ -243,3 +263,4 @@ func indexNames(entries []manifest.IndexEntry) []string {
 	}
 	return names
 }
+
