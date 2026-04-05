@@ -28,6 +28,8 @@ func Proxy(stream adapter.Stream, sessionName string, hostAgent string, opts *Pr
 	}
 	defer term.Restore(fd, oldState)
 
+	w, h, _ := term.GetSize(fd)
+
 	title := fmt.Sprintf("%s — %s", sessionName, hostAgent)
 	setTitle := func() {
 		fmt.Fprintf(os.Stdout, "\033]0;%s\007", title)
@@ -38,7 +40,14 @@ func Proxy(stream adapter.Stream, sessionName string, hostAgent string, opts *Pr
 		return "", err
 	}
 
-	watchResize(stream, fd, setTitle)
+	// Draw the toolbar on the last row (purely cosmetic — no scroll region, no resize change)
+	renderBar(w, h, sessionName, hostAgent, opts)
+
+	watchResize(stream, fd, func() {
+		setTitle()
+		w, h, _ = term.GetSize(fd)
+		renderBar(w, h, sessionName, hostAgent, opts)
+	})
 
 	done := make(chan struct{})
 	var once sync.Once
@@ -56,6 +65,9 @@ func Proxy(stream adapter.Stream, sessionName string, hostAgent string, opts *Pr
 				count++
 				if count%50 == 0 {
 					setTitle()
+					if !inAltScreen {
+						renderBar(w, h, sessionName, hostAgent, opts)
+					}
 				}
 
 				chunk := string(buf[:n])
@@ -109,4 +121,34 @@ func sendResize(stream adapter.Stream, fd int) error {
 		return fmt.Errorf("sending resize: %w", err)
 	}
 	return nil
+}
+
+func renderBar(width, height int, session, hostAgent string, opts *ProxyOptions) {
+	fmt.Fprintf(os.Stdout, "\0337")              // save cursor
+	fmt.Fprintf(os.Stdout, "\033[%d;1H", height) // move to last row
+
+	left := fmt.Sprintf(" ⧉ nowbox | %s | %s", session, hostAgent)
+
+	var shortcuts []string
+	if opts != nil && opts.SaveFunc != nil {
+		shortcuts = append(shortcuts, "^S Save")
+	}
+	if opts != nil && len(opts.Modes) > 0 {
+		shortcuts = append(shortcuts, "^\\ Switch")
+	}
+	shortcuts = append(shortcuts, "^Q Quit")
+	right := " " + strings.Join(shortcuts, "  ") + " "
+
+	gap := width - len(left) - len(right)
+	if gap < 1 {
+		gap = 1
+	}
+
+	bar := left + strings.Repeat(" ", gap) + right
+	if len(bar) > width {
+		bar = bar[:width]
+	}
+
+	fmt.Fprintf(os.Stdout, "\033[7m%s\033[0m", bar)
+	fmt.Fprintf(os.Stdout, "\0338") // restore cursor
 }
