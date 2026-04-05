@@ -37,16 +37,17 @@ func Serve(
 	mux := http.NewServeMux()
 	mux.HandleFunc("/mcp", srv.handleMCP)
 
-	fmt.Fprintf(os.Stderr, "\n  mcp server running on port %d\n", port)
-	fmt.Fprintf(os.Stderr, "\n  add to claude code mcp settings:\n\n")
-	fmt.Fprintf(os.Stderr, "  {\n")
-	fmt.Fprintf(os.Stderr, "    \"mcpServers\": {\n")
-	fmt.Fprintf(os.Stderr, "      \"nowbox-%s\": {\n", sessionName)
-	fmt.Fprintf(os.Stderr, "        \"url\": \"http://localhost:%d/mcp\"\n", port)
-	fmt.Fprintf(os.Stderr, "      }\n")
-	fmt.Fprintf(os.Stderr, "    }\n")
-	fmt.Fprintf(os.Stderr, "  }\n\n")
-	fmt.Fprintf(os.Stderr, "  ctrl-c to stop\n\n")
+	url := fmt.Sprintf("http://localhost:%d/mcp", port)
+	name := "nowbox-" + sessionName
+
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  nowbox mcp: %s\n", url)
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  claude code:   claude mcp add %s --url %s\n", name, url)
+	fmt.Fprintf(os.Stderr, "  cursor:        add %s to mcp settings\n", url)
+	fmt.Fprintf(os.Stderr, "  codex:         codex mcp add %s --url %s\n", name, url)
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  ctrl-c to stop\n")
 
 	go http.Serve(listener, mux)
 

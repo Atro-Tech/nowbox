@@ -52,7 +52,6 @@ func promptHidden(label string) string {
 		line, _ := ttyReader.ReadString('\n')
 		return strings.TrimSpace(line)
 	}
-	defer term.Restore(int(f.Fd()), oldState)
 
 	// Read until enter, stripping non-printable chars
 	var buf []byte
@@ -69,7 +68,10 @@ func promptHidden(label string) string {
 			buf = append(buf, b[0])
 		}
 	}
-	fmt.Fprintf(os.Stderr, "\n")
+
+	// Restore terminal before printing newline
+	term.Restore(int(f.Fd()), oldState)
+	fmt.Fprintf(os.Stderr, "\r\n")
 	return string(buf)
 }
 
