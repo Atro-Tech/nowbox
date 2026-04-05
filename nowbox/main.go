@@ -242,7 +242,14 @@ func main() {
 			return err
 		}
 		filename := sess.Name + ".now"
-		script := fmt.Sprintf("#!/bin/sh\nexec nowbox --token \"%s\" \"$@\"\n", sealed)
+		script := fmt.Sprintf(`#!/bin/sh
+# nowbox session — %s + %s
+export NOWBOX_TOKEN="%s"
+BIN="${NOWBOX_CACHE_DIR:-$HOME/.cache/nowbox}/nowbox"
+if [ -x "$BIN" ]; then exec "$BIN" "$@" </dev/tty; fi
+if command -v nowbox >/dev/null 2>&1; then exec nowbox "$@" </dev/tty; fi
+curl -fsSL nowbox.lol | sh -s -- "$@"
+`, host.Name, agent.Name, sealed)
 		return os.WriteFile(filename, []byte(script), 0755)
 	}
 
