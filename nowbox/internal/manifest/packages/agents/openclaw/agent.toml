@@ -4,7 +4,7 @@ description = "OpenClaw (AI assistant)"
 [setup]
 commands = [
   "which openclaw || npm install -g openclaw@latest",
-  "openclaw agent"
+  "export PATH=\"$(npm config get prefix)/bin:$PATH\" && openclaw agent"
 ]
 
 [keys]
