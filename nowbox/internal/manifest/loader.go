@@ -1,6 +1,10 @@
 package manifest
 
 import (
+	"crypto/ed25519"
+	"crypto/x509"
+	_ "embed"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,8 +19,24 @@ const repoBase = "https://raw.githubusercontent.com/Atro-Tech/nowbox/main/nowbox
 
 var cacheDir = filepath.Join(os.Getenv("HOME"), ".nowbox")
 
-// Bundled index — just names and descriptions, compiled into the binary.
-// The actual manifests are fetched from GitHub at runtime.
+//go:embed signing.pub
+var signingPubKeyPEM []byte
+
+var signingPubKey ed25519.PublicKey
+
+func init() {
+	block, _ := pem.Decode(signingPubKeyPEM)
+	if block == nil {
+		panic("invalid embedded signing public key")
+	}
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		panic("invalid embedded signing public key: " + err.Error())
+	}
+	signingPubKey = pub.(ed25519.PublicKey)
+}
+
+// Bundled index — names and descriptions only.
 type IndexEntry struct {
 	Name        string
 	Description string
@@ -50,7 +70,6 @@ var AgentIndex = []IndexEntry{
 	{Name: "cline", Description: "Cline (terminal AI agent)"},
 }
 
-// LoadHost resolves a host by name or path.
 func LoadHost(nameOrPath string) (*HostManifest, error) {
 	data, err := resolve(nameOrPath, "hosts", "host.toml")
 	if err != nil {
@@ -65,7 +84,6 @@ func LoadHost(nameOrPath string) (*HostManifest, error) {
 	return &m, nil
 }
 
-// LoadAgent resolves an agent by name or path.
 func LoadAgent(nameOrPath string) (*AgentManifest, error) {
 	data, err := resolve(nameOrPath, "agents", "agent.toml")
 	if err != nil {
@@ -82,12 +100,12 @@ func LoadAgent(nameOrPath string) (*AgentManifest, error) {
 
 // resolve follows the manifest fetch chain:
 // 1. local file path → use it (unsigned, developer mode)
-// 2. cached locally → use ~/.nowbox/<kind>/<name>.toml
-// 3. known name in index → fetch from GitHub, cache it
-// 4. URL → fetch it, cache it
+// 2. cached locally → use it (was verified on first fetch)
+// 3. known name in index → fetch from GitHub + signature, verify, cache
+// 4. URL → fetch + signature, verify, cache
 // 5. unknown → error
 func resolve(nameOrPath string, kind string, filename string) ([]byte, error) {
-	// 1. Local file path
+	// 1. Local file path — unsigned developer mode
 	if strings.Contains(nameOrPath, "/") || strings.Contains(nameOrPath, ".toml") {
 		data, err := os.ReadFile(nameOrPath)
 		if err != nil {
@@ -96,7 +114,7 @@ func resolve(nameOrPath string, kind string, filename string) ([]byte, error) {
 		return data, nil
 	}
 
-	// 2. Cached locally
+	// 2. Cached locally (verified on first fetch)
 	cachePath := filepath.Join(cacheDir, kind, nameOrPath+".toml")
 	if data, err := os.ReadFile(cachePath); err == nil {
 		return data, nil
@@ -119,17 +137,19 @@ func resolve(nameOrPath string, kind string, filename string) ([]byte, error) {
 	}
 
 	if known {
-		url := fmt.Sprintf("%s/%s/%s/%s", repoBase, kind, nameOrPath, filename)
-		data, err := fetchAndCache(url, cachePath)
+		manifestURL := fmt.Sprintf("%s/%s/%s/%s", repoBase, kind, nameOrPath, filename)
+		sigURL := manifestURL + ".sig"
+		data, err := fetchAndVerify(manifestURL, sigURL, cachePath)
 		if err != nil {
 			return nil, fmt.Errorf("fetching %s manifest for %q: %w", kind[:len(kind)-1], nameOrPath, err)
 		}
 		return data, nil
 	}
 
-	// 4. URL
+	// 4. URL → fetch + verify
 	if strings.HasPrefix(nameOrPath, "http://") || strings.HasPrefix(nameOrPath, "https://") {
-		data, err := fetchAndCache(nameOrPath, cachePath)
+		sigURL := nameOrPath + ".sig"
+		data, err := fetchAndVerify(nameOrPath, sigURL, cachePath)
 		if err != nil {
 			return nil, fmt.Errorf("fetching manifest from %s: %w", nameOrPath, err)
 		}
@@ -140,25 +160,44 @@ func resolve(nameOrPath string, kind string, filename string) ([]byte, error) {
 	return nil, fmt.Errorf("unknown %s: %q", kind[:len(kind)-1], nameOrPath)
 }
 
-func fetchAndCache(url string, cachePath string) ([]byte, error) {
+func fetchAndVerify(manifestURL string, sigURL string, cachePath string) ([]byte, error) {
 	fmt.Fprintf(os.Stderr, "  fetching manifest...\n")
 
-	resp, err := http.Get(url)
+	// Fetch manifest
+	resp, err := http.Get(manifestURL)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
+		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, manifestURL)
 	}
-
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	// Cache it
+	// Fetch signature
+	sigResp, err := http.Get(sigURL)
+	if err != nil {
+		return nil, fmt.Errorf("cannot fetch signature: %w", err)
+	}
+	defer sigResp.Body.Close()
+	if sigResp.StatusCode != 200 {
+		return nil, fmt.Errorf("manifest signature not found at %s (HTTP %d) — refusing unsigned manifest", sigURL, sigResp.StatusCode)
+	}
+	sig, err := io.ReadAll(sigResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading signature: %w", err)
+	}
+
+	// Verify signature
+	if !ed25519.Verify(signingPubKey, data, sig) {
+		return nil, fmt.Errorf("manifest signature verification FAILED — manifest may be tampered")
+	}
+	fmt.Fprintf(os.Stderr, "  verified ✓\n")
+
+	// Cache (only after verification)
 	dir := filepath.Dir(cachePath)
 	os.MkdirAll(dir, 0700)
 	os.WriteFile(cachePath, data, 0600)
@@ -166,17 +205,9 @@ func fetchAndCache(url string, cachePath string) ([]byte, error) {
 	return data, nil
 }
 
-// ListHosts returns the bundled host index.
-func ListHosts() []IndexEntry {
-	return HostIndex
-}
+func ListHosts() []IndexEntry  { return HostIndex }
+func ListAgents() []IndexEntry { return AgentIndex }
 
-// ListAgents returns the bundled agent index.
-func ListAgents() []IndexEntry {
-	return AgentIndex
-}
-
-// Expand replaces ${VAR} references in a string with values from the vars map.
 func Expand(s string, vars map[string]string) string {
 	for k, v := range vars {
 		s = strings.ReplaceAll(s, "${"+k+"}", v)
@@ -184,7 +215,6 @@ func Expand(s string, vars map[string]string) string {
 	return s
 }
 
-// ExpandMap replaces ${VAR} references in all values of a map.
 func ExpandMap(m map[string]string, vars map[string]string) map[string]string {
 	result := make(map[string]string, len(m))
 	for k, v := range m {

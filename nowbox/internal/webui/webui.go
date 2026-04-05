@@ -1,9 +1,11 @@
 package webui
 
 import (
+	"crypto/rand"
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -19,8 +21,27 @@ import (
 //go:embed page.html
 var pageHTML string
 
+// sessionToken is a per-session random token required on the WebSocket path.
+// Prevents cross-origin WebSocket hijacking from malicious pages.
+var sessionToken string
+
+func init() {
+	b := make([]byte, 16)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		panic(err)
+	}
+	sessionToken = fmt.Sprintf("%x", b)
+}
+
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true
+		}
+		// Only allow our own localhost origin
+		return strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "http://localhost")
+	},
 }
 
 // Serve starts a local web server, opens the browser, and blocks until
@@ -37,10 +58,13 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
 	var once sync.Once
 	finish := func() { once.Do(func() { close(done) }) }
 
+	wsPath := "/ws/" + sessionToken
+
 	// Serve the HTML page
 	html := strings.ReplaceAll(pageHTML, "{{TITLE}}", sessionName+" — "+hostAgent)
 	html = strings.ReplaceAll(html, "{{SESSION}}", sessionName)
 	html = strings.ReplaceAll(html, "{{HOST_AGENT}}", hostAgent)
+	html = strings.ReplaceAll(html, "{{WS_PATH}}", wsPath)
 
 	mux := http.NewServeMux()
 
@@ -50,7 +74,7 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
 	})
 
 	// WebSocket proxy — browser ↔ remote stream
-	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(wsPath, func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return

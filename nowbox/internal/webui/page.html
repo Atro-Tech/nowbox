@@ -59,7 +59,7 @@ term.loadAddon(fitAddon);
 term.open(document.getElementById('terminal'));
 fitAddon.fit();
 
-var ws = new WebSocket('ws://' + location.host + '/ws');
+var ws = new WebSocket('ws://' + location.host + '{{WS_PATH}}');
 ws.binaryType = 'arraybuffer';
 
 ws.onopen = function() {
