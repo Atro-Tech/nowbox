@@ -12,6 +12,7 @@ import (
 
 	"github.com/nowbox/nowbox/internal/manifest"
 	"github.com/nowbox/nowbox/internal/mcpserver"
+	"github.com/nowbox/nowbox/internal/names"
 	"github.com/nowbox/nowbox/internal/session"
 	"github.com/nowbox/nowbox/internal/terminal"
 	"github.com/nowbox/nowbox/internal/token"
@@ -86,9 +87,14 @@ func main() {
 	flag.StringVar(&clientMode, "c", "cli", "client mode (short)")
 	flag.Parse()
 
-	// Positional args: nowbox sprites claude web
-	//              or: nowbox session.now
 	args := flag.Args()
+	createMode := false
+
+	// Check for "create" subcommand: nowbox create sprites claude
+	if len(args) > 0 && args[0] == "create" {
+		createMode = true
+		args = args[1:]
+	}
 
 	// Check if first arg is a .now file or NOWBOX_TOKEN env var
 	if tok := os.Getenv("NOWBOX_TOKEN"); tok != "" {
@@ -189,6 +195,12 @@ func main() {
 
 	// v0: agent keys are not collected — agent handles its own auth
 
+	// Create mode — provision sandbox, write .now file, don't connect
+	if createMode {
+		createNowFile(host, agent, vars)
+		return
+	}
+
 	// Create session (provisions sandbox + connects)
 	sess, err := session.New(host, agent, vars)
 	if err != nil {
@@ -280,6 +292,41 @@ func resolveChoice(input string, options []string) string {
 		return options[idx-1]
 	}
 	return choice
+}
+
+func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[string]string) {
+	// Filter vars to only include API keys
+	keyVars := make(map[string]string)
+	for k, v := range vars {
+		if k == "SESSION_NAME" || k == "INSTANCE_ID" {
+			continue
+		}
+		keyVars[k] = v
+	}
+
+	sealed, err := token.Seal(&token.Payload{
+		Host:  host.Name,
+		Agent: agent.Name,
+		Vars:  keyVars,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "nowbox: failed to create token: %v\n", err)
+		os.Exit(1)
+	}
+
+	sessionName := names.Generate()
+	filename := sessionName + ".now"
+
+	script := fmt.Sprintf("#!/bin/sh\nexec nowbox --token \"%s\" \"$@\"\n", sealed)
+
+	if err := os.WriteFile(filename, []byte(script), 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "nowbox: failed to write %s: %v\n", filename, err)
+		os.Exit(1)
+	}
+
+	fmt.Fprintf(os.Stderr, "  created: %s\n", filename)
+	fmt.Fprintf(os.Stderr, "  run:     sh %s\n", filename)
+	fmt.Fprintf(os.Stderr, "  or:      nowbox %s\n", filename)
 }
 
 func loadToken(tok string, hostName *string, agentName *string) {
