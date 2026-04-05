@@ -5,15 +5,25 @@
 [![GitHub Release](https://img.shields.io/github/v/release/Atro-Tech/nowbox)](https://github.com/Atro-Tech/nowbox/releases)
 [![License](https://img.shields.io/github/license/Atro-Tech/nowbox)](LICENSE)
 
-AI coding agents need sandboxes. Setting them up is slow, fragile, and different for every provider. nowbox makes it one command: pick a host, pick an agent, and you're in.
+nowbox is a thin Go CLI that provisions an ephemeral sandbox, installs an agent with manifest-defined commands, and drops you into either a native terminal or a browser terminal.
 
-```
+```sh
 curl -fsSL nowbox.lol | sh -s -- sprites claude
 ```
 
-A cloud sandbox spins up on [Sprites](https://sprites.dev), Claude Code gets installed, and you're connected via a native terminal. When you close, the sandbox is destroyed. Nothing lingers.
+The point is portability: one CLI, one manifest format, multiple sandbox providers and agents.
 
----
+## Current Status
+
+nowbox is early-stage. The repo already contains a broad host and agent catalog, but not every manifest is production-ready yet.
+
+Today, the codebase is best described as:
+
+- A working CLI/runtime for manifest-driven sandbox sessions
+- A working landing site for `nowbox.lol`
+- A support matrix with a mix of working adapters, experimental adapters, and placeholders
+
+If you publish the repo as-is, set expectations accordingly: this is an ambitious prototype with a strong direction, not a finished cross-provider platform.
 
 ## Install
 
@@ -21,9 +31,9 @@ A cloud sandbox spins up on [Sprites](https://sprites.dev), Claude Code gets ins
 curl -fsSL nowbox.lol | sh
 ```
 
-Downloads the right binary for your platform (macOS, Linux, Windows) and caches it at `~/.cache/nowbox`. That's it.
+That downloads the matching release binary for your platform and caches it under `~/.cache/nowbox`.
 
-Or grab a binary directly from [GitHub Releases](https://github.com/Atro-Tech/nowbox/releases).
+You can also download binaries directly from [GitHub Releases](https://github.com/Atro-Tech/nowbox/releases).
 
 ## Usage
 
@@ -31,162 +41,170 @@ Or grab a binary directly from [GitHub Releases](https://github.com/Atro-Tech/no
 nowbox <host> <agent> [client]
 ```
 
-### Examples
+Examples:
 
 ```sh
-nowbox sprites claude          # Claude Code on Sprites
-nowbox sprites codex           # OpenAI Codex on Sprites
-nowbox sprites aider web       # Aider in browser UI
-nowbox docker claude           # Claude Code locally via Docker
+nowbox sprites claude
+nowbox sprites codex
+nowbox vercel codex
+nowbox daytona aider web
 ```
 
-If you omit the host or agent, nowbox will prompt you to pick one interactively.
+If you omit the host or agent, nowbox will prompt you interactively.
 
 ### Client modes
 
-| Mode  | Description                  |
-|-------|------------------------------|
-| `cli` | Native terminal (default)    |
-| `web` | Browser-based terminal UI    |
-| `mcp` | MCP server (coming soon)     |
+| Mode | Status | Notes |
+| --- | --- | --- |
+| `cli` | supported | Native terminal proxy |
+| `web` | supported | Browser terminal UI |
+| `mcp` | not implemented | Listed in some UI/docs, but not available in the CLI yet |
 
 ### Flags
 
-```
+```text
 --host,   -h    Host provider
 --agent,  -a    Agent
---client, -c    Client mode (cli, web, mcp)
+--client, -c    Client mode (cli, web)
 ```
 
-## How it works
+## What Actually Works Today
 
-1. A single Go binary handles everything
-2. It provisions a sandbox on your chosen host via the host's API
-3. Installs the agent via manifest-defined setup commands
-4. Connects you directly (WebSocket or WebRTC) -- nowbox gets out of the way after setup
-5. When you disconnect, the sandbox is destroyed (ephemeral by default)
+The codebase currently has two connection paths:
 
-If nowbox crashes, orphaned sandboxes are detected and cleaned up on next run.
+- `websocket_exec`: full interactive terminal streaming over WebSocket
+- `http_exec`: request/response style execution over HTTP
 
-## Architecture
+That means host support is not all-or-nothing. Some manifests are materially usable, some are experimental, and some are clearly placeholders for future adapters.
 
-```
-nowbox/
-  main.go                          CLI entrypoint
-  internal/
-    manifest/                      TOML manifest loader
-      packages/
-        hosts/                     Host provider configs
-          sprites/host.toml
-          docker/host.toml
-          fly/host.toml
-          e2b/host.toml
-          modal/host.toml
-          ...
-        agents/                    Agent configs
-          claude/agent.toml
-          codex/agent.toml
-          aider/agent.toml
-          goose/agent.toml
-          cline/agent.toml
-          ...
-    session/                       Session lifecycle (create, connect, destroy)
-    adapter/                       Connection adapters (WebSocket, WebRTC)
-    terminal/                      TUI terminal proxy
-    webui/                         Browser terminal UI
-    names/                         Random session name generator
+### Host support
 
-landing/                           SvelteKit landing page (nowbox.lol)
-```
+| Host | Status | Notes |
+| --- | --- | --- |
+| `sprites` | best-supported | Uses the WebSocket exec path and matches the current interactive terminal model best |
+| `vercel` | experimental | Uses HTTP exec; manifest exists, but needs real-world validation as a terminal experience |
+| `daytona` | experimental | Same as above |
+| `runloop` | experimental | Same as above |
+| `blaxel` | experimental | Same as above |
+| `docker` | experimental | Manifest exists, but this is not a real Docker attach flow yet |
+| `podman` | experimental | Same caveat as Docker |
+| `e2b` | incomplete | Create/destroy manifest exists, connect path is empty |
+| `fly.io` | incomplete | Needs SSH/WireGuard-style adapter |
+| `aws` | placeholder | Needs provider-specific adapter/auth flow |
+| `cloudflare` | placeholder | Needs custom adapter/runtime wrapper |
+| `codesandbox` | placeholder | Needs SDK-backed adapter |
+| `modal` | placeholder | Needs SDK-backed adapter |
+| `apple` | placeholder | Needs native adapter |
 
-### Manifests
+### Agent support
 
-Host and agent configurations are TOML files embedded in the binary at compile time. Adding a new host or agent is just adding a `.toml` file.
+The repo currently ships manifests for:
 
-**Host manifest** (`host.toml`) defines how to create, connect to, and destroy a sandbox:
+- `claude`
+- `codex`
+- `aider`
+- `cline`
+- `goose`
+- `hermes`
+- `openclaw`
+- `opencode`
 
-```toml
-name = "sprites"
-description = "Fly.io sandbox"
-adapter = "websocket_exec"
+Agent support here means nowbox knows how to run the setup commands. It does **not** mean every agent/host combination has been validated end-to-end.
 
-[keys]
-required = ["SPRITES_API_KEY"]
-prompt = "sprites api key"
+## How It Works
 
-[create]
-method = "POST"
-url = "https://api.sprites.dev/v1/sprites"
-headers = { Authorization = "Bearer ${SPRITES_API_KEY}" }
-body = '{"name":"${SESSION_NAME}"}'
-parse_id = ".name"
+1. nowbox loads a host manifest and an agent manifest embedded in the binary.
+2. The selected adapter creates the sandbox through the provider API.
+3. nowbox connects to the sandbox stream.
+4. Agent setup commands are sent into the sandbox.
+5. You interact through the CLI terminal or the browser terminal.
+6. On disconnect, nowbox destroys the sandbox and stores recovery metadata if cleanup needs to be retried.
 
-[connect]
-url = "wss://api.sprites.dev/v1/sprites/${INSTANCE_ID}/exec"
-headers = { Authorization = "Bearer ${SPRITES_API_KEY}" }
+## Why This Is Interesting
 
-[destroy]
-method = "DELETE"
-url = "https://api.sprites.dev/v1/sprites/${INSTANCE_ID}"
-headers = { Authorization = "Bearer ${SPRITES_API_KEY}" }
-```
+The strongest part of the project is the product shape:
 
-**Agent manifest** (`agent.toml`) defines how to install and launch an agent:
+- one install command
+- one CLI
+- one manifest format
+- many possible hosts
+- many possible agents
 
-```toml
-name = "claude"
-description = "Claude Code (Anthropic)"
+That is a good abstraction boundary. Most competing products are either:
 
-[setup]
-commands = [
-  "which claude || npm install -g @anthropic-ai/claude-code",
-  "claude"
-]
+- a sandbox provider with their own SDK and runtime model, or
+- a single agent with an opinionated runtime
 
-[keys]
-optional = ["ANTHROPIC_API_KEY"]
-self_auth = true
-```
+nowbox sits one layer above that and aims to unify them.
 
-## Adding a new host
+## Comparison
 
-1. Create `nowbox/internal/manifest/packages/hosts/<name>/host.toml`
-2. Define the `[create]`, `[connect]`, and `[destroy]` sections
-3. Build. The manifest is embedded automatically.
+These are the closest reference points for positioning nowbox today:
 
-## Adding a new agent
+| Project | What it is | Where nowbox is stronger | Where nowbox is weaker |
+| --- | --- | --- | --- |
+| [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox/reference/readme) | Hosted ephemeral sandbox product | More provider-agnostic vision | Far less mature runtime and docs |
+| [E2B](https://e2b.dev/docs) | SDK/platform for isolated agent sandboxes | Simpler CLI-first UX concept | E2B is much more complete and battle-tested |
+| [Daytona](https://www.daytona.io/) | Dev environment/sandbox platform | Lighter abstraction layer across hosts | Daytona has a stronger platform and operational story |
+| [OpenHands](https://github.com/All-Hands-AI/OpenHands) | Full autonomous coding agent system | Cleaner "bring your own host + bring your own agent" framing | OpenHands is far more complete as an end-user agent product |
+| [Goose](https://github.com/block/goose) | Agent/CLI product | nowbox focuses on runtime portability, not just the agent | Goose has much stronger agent polish, docs, and ecosystem traction |
 
-1. Create `nowbox/internal/manifest/packages/agents/<name>/agent.toml`
-2. Define `[setup].commands` -- the shell commands to install and launch the agent
-3. Build.
+The benchmark takeaway:
 
-## Building from source
+- The idea is strong.
+- The current implementation is still much earlier than the best-known projects in this space.
+- The clearest differentiator is "unified launcher for many hosts and many agents."
+
+## README-Level Risks To Fix Before Pushing
+
+These were the main documentation problems in the previous version of this README:
+
+- It implied a broader level of host support than the code currently provides.
+- It showed examples like `mcp` as if they were usable.
+- It mixed implemented features with placeholder architecture.
+- It undersold the fact that many manifests are speculative and adapter-dependent.
+
+Those are now corrected here.
+
+## Developing
+
+### Go CLI
 
 ```sh
 cd nowbox
-go build -o nowbox .
+go build .
+go test ./...
 ```
 
-Requires Go 1.21+.
+Use the Go version pinned in [`nowbox/go.mod`](./nowbox/go.mod).
 
-## Project structure
+### Landing site
 
-| Directory  | What it is                          |
-|------------|-------------------------------------|
-| `nowbox/`  | Go binary -- the product            |
-| `landing/` | SvelteKit landing page (nowbox.lol) |
+```sh
+cd landing
+npm install
+npm run dev
+```
+
+For Vercel deployment, this repo is configured to use `@sveltejs/adapter-vercel`.
+
+## Project Structure
+
+| Directory | Purpose |
+| --- | --- |
+| `nowbox/` | Go CLI/runtime |
+| `landing/` | SvelteKit landing site |
 
 ## Contributing
 
-Contributions welcome. The highest-impact contributions right now:
+The highest-leverage contributions right now are:
 
-- **New host manifests** -- add support for more sandbox providers
-- **New agent manifests** -- add support for more AI coding agents
-- **Bug fixes and testing** -- especially around session lifecycle and cleanup
-
-Open an issue first for anything large. For new hosts/agents, just open a PR with the TOML file.
+- turning experimental hosts into validated hosts
+- replacing placeholder manifests with real adapters
+- adding end-to-end tests around create/connect/destroy flows
+- tightening provider-specific docs and setup instructions
 
 ## Links
 
-- **Website:** [nowbox.lol](https://nowbox.lol)
-- **Repository:** [github.com/Atro-Tech/nowbox](https://github.com/Atro-Tech/nowbox)
+- [Website](https://nowbox.lol)
+- [GitHub repo](https://github.com/Atro-Tech/nowbox)

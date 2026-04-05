@@ -76,7 +76,7 @@ func main() {
 		}
 		fmt.Fprintf(os.Stderr, "host: ")
 		fmt.Scanln(&hostName)
-		hostName = resolveChoice(hostName, hostNames(hosts))
+		hostName = resolveChoice(hostName, indexNames(hosts))
 	}
 
 	// If no agent specified, prompt
@@ -92,7 +92,7 @@ func main() {
 		}
 		fmt.Fprintf(os.Stderr, "agent: ")
 		fmt.Scanln(&agentName)
-		agentName = resolveChoice(agentName, agentNames(agents))
+		agentName = resolveChoice(agentName, indexNames(agents))
 	}
 
 	// Load manifests
@@ -212,18 +212,10 @@ func resolveChoice(input string, options []string) string {
 	return choice
 }
 
-func hostNames(hosts []manifest.HostManifest) []string {
-	names := make([]string, 0, len(hosts))
-	for _, host := range hosts {
-		names = append(names, host.Name)
-	}
-	return names
-}
-
-func agentNames(agents []manifest.AgentManifest) []string {
-	names := make([]string, 0, len(agents))
-	for _, agent := range agents {
-		names = append(names, agent.Name)
+func indexNames(entries []manifest.IndexEntry) []string {
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name)
 	}
 	return names
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/nowbox/nowbox/internal/adapter"
 	"github.com/nowbox/nowbox/internal/manifest"
@@ -150,10 +151,26 @@ func writeRecovery(name, instanceID string, host *manifest.HostManifest) {
 }
 
 func newAdapter(host *manifest.HostManifest) (adapter.Adapter, error) {
-	switch host.Adapter {
-	case "websocket_exec":
-		return &adapter.WebSocketExec{Host: host}, nil
-	default:
-		return nil, fmt.Errorf("unsupported adapter: %s", host.Adapter)
+	// Check if the manifest has real endpoints
+	if host.Create.URL == "" {
+		return nil, fmt.Errorf("%s host is not yet supported (no API endpoints in manifest)", host.Name)
 	}
+
+	// Route to adapter based on connection type
+	connectURL := host.Connect.URL
+	if connectURL == "" {
+		return nil, fmt.Errorf("%s host has no connect endpoint", host.Name)
+	}
+
+	// WebSocket connections
+	if strings.HasPrefix(connectURL, "wss://") || strings.HasPrefix(connectURL, "ws://") {
+		return &adapter.WebSocketExec{Host: host}, nil
+	}
+
+	// HTTP connections
+	if strings.HasPrefix(connectURL, "https://") || strings.HasPrefix(connectURL, "http://") {
+		return &adapter.HTTPExec{Host: host}, nil
+	}
+
+	return nil, fmt.Errorf("%s host has unsupported connect URL scheme: %s", host.Name, connectURL)
 }

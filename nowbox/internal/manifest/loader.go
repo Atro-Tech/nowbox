@@ -1,8 +1,9 @@
 package manifest
 
 import (
-	"embed"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,15 +11,46 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-//go:embed packages/hosts/*/host.toml
-var embeddedHosts embed.FS
-
-//go:embed packages/agents/*/agent.toml
-var embeddedAgents embed.FS
+const repoBase = "https://raw.githubusercontent.com/Atro-Tech/nowbox/main/nowbox/internal/manifest/packages"
 
 var cacheDir = filepath.Join(os.Getenv("HOME"), ".nowbox")
 
-// LoadHost resolves a host by name or path following the manifest fetch chain.
+// Bundled index — just names and descriptions, compiled into the binary.
+// The actual manifests are fetched from GitHub at runtime.
+type IndexEntry struct {
+	Name        string
+	Description string
+}
+
+var HostIndex = []IndexEntry{
+	{Name: "sprites", Description: "Fly.io sandbox (sprites.dev)"},
+	{Name: "modal", Description: "Modal container"},
+	{Name: "e2b", Description: "E2B microVM"},
+	{Name: "daytona", Description: "Daytona sandbox"},
+	{Name: "fly", Description: "Fly.io machine"},
+	{Name: "cloudflare", Description: "Cloudflare container"},
+	{Name: "docker", Description: "Local Docker container"},
+	{Name: "aws", Description: "AWS ECS Fargate"},
+	{Name: "blaxel", Description: "Blaxel sandbox"},
+	{Name: "runloop", Description: "Runloop devbox"},
+	{Name: "vercel", Description: "Vercel sandbox"},
+	{Name: "codesandbox", Description: "CodeSandbox devbox"},
+	{Name: "podman", Description: "Local Podman container"},
+	{Name: "apple", Description: "Apple Virtualization (macOS)"},
+}
+
+var AgentIndex = []IndexEntry{
+	{Name: "claude", Description: "Claude Code (Anthropic)"},
+	{Name: "codex", Description: "Codex (OpenAI)"},
+	{Name: "aider", Description: "Aider (AI pair programmer)"},
+	{Name: "openclaw", Description: "OpenClaw (AI assistant)"},
+	{Name: "hermes", Description: "Hermes Agent (Nous Research)"},
+	{Name: "opencode", Description: "OpenCode (terminal coding agent)"},
+	{Name: "goose", Description: "Goose (Block)"},
+	{Name: "cline", Description: "Cline (terminal AI agent)"},
+}
+
+// LoadHost resolves a host by name or path.
 func LoadHost(nameOrPath string) (*HostManifest, error) {
 	data, err := resolve(nameOrPath, "hosts", "host.toml")
 	if err != nil {
@@ -30,18 +62,10 @@ func LoadHost(nameOrPath string) (*HostManifest, error) {
 		return nil, fmt.Errorf("parsing host manifest: %w", err)
 	}
 
-	// Validate adapter is a known type
-	switch m.Adapter {
-	case "websocket_exec":
-		// ok
-	default:
-		return nil, fmt.Errorf("unsupported adapter: %s", m.Adapter)
-	}
-
 	return &m, nil
 }
 
-// LoadAgent resolves an agent by name or path following the manifest fetch chain.
+// LoadAgent resolves an agent by name or path.
 func LoadAgent(nameOrPath string) (*AgentManifest, error) {
 	data, err := resolve(nameOrPath, "agents", "agent.toml")
 	if err != nil {
@@ -56,15 +80,15 @@ func LoadAgent(nameOrPath string) (*AgentManifest, error) {
 	return &m, nil
 }
 
-// resolve follows the manifest fetch chain from the spec:
-// 1. local file path → use it
+// resolve follows the manifest fetch chain:
+// 1. local file path → use it (unsigned, developer mode)
 // 2. cached locally → use ~/.nowbox/<kind>/<name>.toml
-// 3. bundled in binary → use embedded
-// 4. URL → fetch, verify, cache (not implemented in v0)
+// 3. known name in index → fetch from GitHub, cache it
+// 4. URL → fetch it, cache it
 // 5. unknown → error
 func resolve(nameOrPath string, kind string, filename string) ([]byte, error) {
 	// 1. Local file path
-	if strings.Contains(nameOrPath, "/") || strings.Contains(nameOrPath, ".") {
+	if strings.Contains(nameOrPath, "/") || strings.Contains(nameOrPath, ".toml") {
 		data, err := os.ReadFile(nameOrPath)
 		if err != nil {
 			return nil, fmt.Errorf("reading local manifest %s: %w", nameOrPath, err)
@@ -78,63 +102,78 @@ func resolve(nameOrPath string, kind string, filename string) ([]byte, error) {
 		return data, nil
 	}
 
-	// 3. Bundled in binary
-	var fs embed.FS
+	// 3. Known name in index → fetch from GitHub
+	var index []IndexEntry
 	if kind == "hosts" {
-		fs = embeddedHosts
+		index = HostIndex
 	} else {
-		fs = embeddedAgents
+		index = AgentIndex
 	}
 
-	embeddedPath := fmt.Sprintf("packages/%s/%s/%s", kind, nameOrPath, filename)
-	if data, err := fs.ReadFile(embeddedPath); err == nil {
+	known := false
+	for _, entry := range index {
+		if entry.Name == nameOrPath {
+			known = true
+			break
+		}
+	}
+
+	if known {
+		url := fmt.Sprintf("%s/%s/%s/%s", repoBase, kind, nameOrPath, filename)
+		data, err := fetchAndCache(url, cachePath)
+		if err != nil {
+			return nil, fmt.Errorf("fetching %s manifest for %q: %w", kind[:len(kind)-1], nameOrPath, err)
+		}
 		return data, nil
 	}
 
-	// 4. URL fetch — not implemented in v0
+	// 4. URL
+	if strings.HasPrefix(nameOrPath, "http://") || strings.HasPrefix(nameOrPath, "https://") {
+		data, err := fetchAndCache(nameOrPath, cachePath)
+		if err != nil {
+			return nil, fmt.Errorf("fetching manifest from %s: %w", nameOrPath, err)
+		}
+		return data, nil
+	}
 
 	// 5. Unknown
 	return nil, fmt.Errorf("unknown %s: %q", kind[:len(kind)-1], nameOrPath)
 }
 
-// ListHosts returns all known host names from the bundled index.
-func ListHosts() []HostManifest {
-	return listManifests[HostManifest](embeddedHosts, "hosts", "host.toml")
-}
+func fetchAndCache(url string, cachePath string) ([]byte, error) {
+	fmt.Fprintf(os.Stderr, "  fetching manifest...\n")
 
-// ListAgents returns all known agent names from the bundled index.
-func ListAgents() []AgentManifest {
-	return listManifests[AgentManifest](embeddedAgents, "agents", "agent.toml")
-}
-
-func listManifests[T any](fs embed.FS, kind string, filename string) []T {
-	var results []T
-
-	dirPath := fmt.Sprintf("packages/%s", kind)
-	entries, err := fs.ReadDir(dirPath)
+	resp, err := http.Get(url)
 	if err != nil {
-		return results
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
 	}
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		path := fmt.Sprintf("packages/%s/%s/%s", kind, entry.Name(), filename)
-		data, err := fs.ReadFile(path)
-		if err != nil {
-			continue
-		}
-
-		var m T
-		if err := toml.Unmarshal(data, &m); err != nil {
-			continue
-		}
-		results = append(results, m)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	return results
+	// Cache it
+	dir := filepath.Dir(cachePath)
+	os.MkdirAll(dir, 0700)
+	os.WriteFile(cachePath, data, 0600)
+
+	return data, nil
+}
+
+// ListHosts returns the bundled host index.
+func ListHosts() []IndexEntry {
+	return HostIndex
+}
+
+// ListAgents returns the bundled agent index.
+func ListAgents() []IndexEntry {
+	return AgentIndex
 }
 
 // Expand replaces ${VAR} references in a string with values from the vars map.
