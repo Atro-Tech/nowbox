@@ -1,5 +1,14 @@
+# Archive (old system)
+archive/
+
+# Build artifacts
 nowbox/nowbox
 nowbox/dist/
+nowbox/test.exp
+
+# Dependencies
 landing/node_modules/
 landing/.svelte-kit/
+
+# OS
 .DS_Store
