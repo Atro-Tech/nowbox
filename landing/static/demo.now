@@ -1,5 +1,3 @@
 #!/bin/sh
-# nowbox — sprites + claude
-set -e
-export NOWBOX_TOKEN="d0iQAZ1qbyeoXoqoFu5oRxLXisaZZIHBVrCuJTw9sRaOIl1bHtWAgGsPYV2yh2TVs5Jlk0p/mkwaCeoyA0gqYSBnoNZrYNLsQjee/tFdYUWsfGBykDaubCNC+eZUh3i0tBtatLlD9sDbiwHyMeo2RQHTGToP3gMahjoHcy+PcWPlwKsREg3+xtjebbBsczGZ+KlKLD4f3C2hCOfwl3DPb7XLumr4Wq/Ee4nLwMCFVWHjKWE6lIj89NBMjnHgorwaRwKDljwELorufu8="
+# nowbox demo — sprites + claude
 curl -fsSL nowbox.lol | sh -s -- sprites claude
