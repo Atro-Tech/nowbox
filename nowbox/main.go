@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/nowbox/nowbox/internal/appui"
 	"github.com/nowbox/nowbox/internal/manifest"
@@ -208,39 +207,16 @@ func main() {
 		os.Exit(130)
 	}()
 
-	// Send agent setup commands — drain output so user doesn't see shell noise
+	// Send agent setup commands
 	if len(agent.Setup.Commands) > 0 {
 		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
-
-		// Drain PTY output in background during setup
-		setupDone := make(chan struct{})
-		go func() {
-			buf := make([]byte, 4096)
-			for {
-				select {
-				case <-setupDone:
-					return
-				default:
-				}
-				sess.Stream.Read(buf)
-			}
-		}()
-
 		for _, cmd := range agent.Setup.Commands {
 			if _, err := sess.Stream.Write([]byte(cmd + "\n")); err != nil {
-				close(setupDone)
 				fmt.Fprintf(os.Stderr, "nowbox: setup failed: %v\n", err)
 				sess.Destroy()
 				os.Exit(1)
 			}
 		}
-
-		// Wait for the agent to start — give it time to initialize
-		time.Sleep(3 * time.Second)
-		close(setupDone)
-
-		// Clear screen so user only sees the agent
-		fmt.Fprintf(os.Stdout, "\033[2J\033[H")
 	}
 
 	fmt.Fprintf(os.Stderr, "  ready\n")
@@ -248,27 +224,61 @@ func main() {
 	// Connect via selected client mode
 	hostAgent := fmt.Sprintf("%s/%s", host.Name, agent.Name)
 
-	switch clientMode {
-	case "cli":
-		err = terminal.Proxy(sess.Stream, sess.Name, hostAgent)
-	case "browser":
-		err = webui.Serve(sess.Stream, sess.Name, hostAgent, &webui.SessionInfo{
-			HostName:  host.Name,
-			AgentName: agent.Name,
-			Vars:      sess.Vars,
+	allModes := []string{"cli", "browser", "app", "mcp"}
+	saveFunc := func() error {
+		keyVars := make(map[string]string)
+		for k, v := range sess.Vars {
+			if k == "SESSION_NAME" || k == "INSTANCE_ID" {
+				continue
+			}
+			keyVars[k] = v
+		}
+		sealed, err := token.Seal(&token.Payload{
+			Host:  host.Name,
+			Agent: agent.Name,
+			Vars:  keyVars,
 		})
-	case "app":
-		err = appui.Serve(sess.Stream, sess.Name, hostAgent, &appui.SessionInfo{
-			HostName:  host.Name,
-			AgentName: agent.Name,
-			Vars:      sess.Vars,
-		})
-	case "mcp":
-		err = mcpserver.Serve(host, sess.Stream, sess.InstanceID, sess.Name, agent.Name, sess.Vars)
-	default:
-		fmt.Fprintf(os.Stderr, "nowbox: unknown client mode: %s\n", clientMode)
-		sess.Destroy()
-		os.Exit(1)
+		if err != nil {
+			return err
+		}
+		filename := sess.Name + ".now"
+		script := fmt.Sprintf("#!/bin/sh\nexec nowbox --token \"%s\" \"$@\"\n", sealed)
+		return os.WriteFile(filename, []byte(script), 0755)
+	}
+
+	for {
+		switch clientMode {
+		case "cli":
+			otherModes := modesExcept(allModes, "cli")
+			var nextMode string
+			nextMode, err = terminal.Proxy(sess.Stream, sess.Name, hostAgent, &terminal.ProxyOptions{
+				Modes:    otherModes,
+				SaveFunc: saveFunc,
+			})
+			if nextMode != "" {
+				clientMode = nextMode
+				continue
+			}
+		case "browser":
+			err = webui.Serve(sess.Stream, sess.Name, hostAgent, &webui.SessionInfo{
+				HostName:  host.Name,
+				AgentName: agent.Name,
+				Vars:      sess.Vars,
+			})
+		case "app":
+			err = appui.Serve(sess.Stream, sess.Name, hostAgent, &appui.SessionInfo{
+				HostName:  host.Name,
+				AgentName: agent.Name,
+				Vars:      sess.Vars,
+			})
+		case "mcp":
+			err = mcpserver.Serve(host, sess.Stream, sess.InstanceID, sess.Name, agent.Name, sess.Vars)
+		default:
+			fmt.Fprintf(os.Stderr, "nowbox: unknown client mode: %s\n", clientMode)
+			sess.Destroy()
+			os.Exit(1)
+		}
+		break
 	}
 
 	// Teardown
@@ -474,5 +484,15 @@ func indexNames(entries []manifest.IndexEntry) []string {
 		names = append(names, e.Name)
 	}
 	return names
+}
+
+func modesExcept(all []string, current string) []string {
+	var out []string
+	for _, m := range all {
+		if m != current {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
