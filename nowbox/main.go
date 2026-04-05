@@ -233,7 +233,7 @@ func main() {
 			Vars:      sess.Vars,
 		})
 	case "mcp":
-		err = mcpserver.Serve(host, sess.InstanceID, sess.Name, sess.Vars)
+		err = mcpserver.Serve(host, sess.Stream, sess.InstanceID, sess.Name, agent.Name, sess.Vars)
 	default:
 		fmt.Fprintf(os.Stderr, "nowbox: unknown client mode: %s\n", clientMode)
 		sess.Destroy()
