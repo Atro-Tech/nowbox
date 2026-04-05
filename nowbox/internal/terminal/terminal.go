@@ -80,7 +80,9 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 	// Set up initial layout
 	if opts != nil && opts.AltScreen {
 		// Agent already in alt-screen — full passthrough, no toolbar
+		// Bounce resize to force the agent to redraw (its initial render was drained)
 		inAltScreen = true
+		stream.Resize(w, h-1)
 		stream.Resize(w, h)
 	} else {
 		fmt.Fprintf(os.Stdout, "\033[2J")   // clear entire screen
