@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/nowbox/nowbox/internal/manifest"
+	"github.com/nowbox/nowbox/internal/mcpserver"
 	"github.com/nowbox/nowbox/internal/session"
 	"github.com/nowbox/nowbox/internal/terminal"
 	"github.com/nowbox/nowbox/internal/token"
@@ -84,7 +85,21 @@ func main() {
 	flag.Parse()
 
 	// Positional args: nowbox sprites claude web
+	//              or: nowbox session.now
 	args := flag.Args()
+
+	// Check if first arg is a .now file or NOWBOX_TOKEN env var
+	if tok := os.Getenv("NOWBOX_TOKEN"); tok != "" {
+		loadToken(tok, &hostName, &agentName)
+	} else if len(args) > 0 && strings.HasSuffix(args[0], ".now") {
+		data, err := os.ReadFile(args[0])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "nowbox: %v\n", err)
+			os.Exit(1)
+		}
+		loadToken(strings.TrimSpace(string(data)), &hostName, &agentName)
+		args = args[1:]
+	}
 
 	if hostName == "" && len(args) > 0 {
 		hostName = args[0]
@@ -94,24 +109,6 @@ func main() {
 	}
 	if len(args) > 2 {
 		clientMode = args[2]
-	}
-
-	// If a .now token is present, decrypt it and inject vars + args
-	if tok := os.Getenv("NOWBOX_TOKEN"); tok != "" {
-		payload, err := token.Open(tok)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "nowbox: %v\n", err)
-			os.Exit(1)
-		}
-		if payload.Host != "" && hostName == "" {
-			hostName = payload.Host
-		}
-		if payload.Agent != "" && agentName == "" {
-			agentName = payload.Agent
-		}
-		for k, v := range payload.Vars {
-			os.Setenv(k, v)
-		}
 	}
 
 	initTTY()
@@ -233,6 +230,8 @@ func main() {
 			AgentName: agent.Name,
 			Vars:      sess.Vars,
 		})
+	case "mcp":
+		err = mcpserver.Serve(host, sess.InstanceID, sess.Name, sess.Vars)
 	default:
 		fmt.Fprintf(os.Stderr, "nowbox: unknown client mode: %s\n", clientMode)
 		sess.Destroy()
