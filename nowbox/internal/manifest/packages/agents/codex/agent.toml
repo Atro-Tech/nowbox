@@ -1,0 +1,12 @@
+name = "codex"
+description = "Codex (OpenAI)"
+
+[setup]
+commands = [
+  "which codex || npm install -g @openai/codex",
+  "codex"
+]
+
+[keys]
+optional = ["OPENAI_API_KEY"]
+self_auth = true

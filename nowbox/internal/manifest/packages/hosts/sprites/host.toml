@@ -1,0 +1,28 @@
+name = "sprites"
+description = "Fly.io sandbox"
+adapter = "websocket_exec"
+
+[keys]
+required = ["SPRITES_API_KEY"]
+prompt = "sprites api key"
+
+[create]
+method = "POST"
+url = "https://api.sprites.dev/v1/sprites"
+headers = { Authorization = "Bearer ${SPRITES_API_KEY}", Content-Type = "application/json" }
+body = '{"name":"${SESSION_NAME}"}'
+parse_id = ".name"
+
+[connect]
+url = "wss://api.sprites.dev/v1/sprites/${INSTANCE_ID}/exec"
+headers = { Authorization = "Bearer ${SPRITES_API_KEY}" }
+query = { tty = "true", stdin = "true", cmd = "sh", path = "sh", env = "TERM=xterm-256color" }
+
+[destroy]
+method = "DELETE"
+url = "https://api.sprites.dev/v1/sprites/${INSTANCE_ID}"
+headers = { Authorization = "Bearer ${SPRITES_API_KEY}" }
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

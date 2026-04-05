@@ -1,0 +1,5 @@
+nowbox/nowbox
+nowbox/dist/
+landing/node_modules/
+landing/.svelte-kit/
+.DS_Store

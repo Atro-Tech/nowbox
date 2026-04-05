@@ -1,0 +1,12 @@
+name = "claude"
+description = "Claude Code (Anthropic)"
+
+[setup]
+commands = [
+  "which claude || npm install -g @anthropic-ai/claude-code",
+  "claude"
+]
+
+[keys]
+optional = ["ANTHROPIC_API_KEY"]
+self_auth = true
