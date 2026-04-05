@@ -113,7 +113,7 @@ Agent support here means nowbox knows how to run the setup commands. It does **n
 
 ## How It Works
 
-1. nowbox loads a host manifest and an agent manifest embedded in the binary.
+1. nowbox loads a host manifest and an agent manifest from GitHub or local cache.
 2. The selected adapter creates the sandbox through the provider API.
 3. nowbox connects to the sandbox stream.
 4. Agent setup commands are sent into the sandbox.
@@ -165,6 +165,17 @@ These were the main documentation problems in the previous version of this READM
 - It undersold the fact that many manifests are speculative and adapter-dependent.
 
 Those are now corrected here.
+
+## Manifest model
+
+Manifest resolution currently works like this:
+
+1. local manifest path
+2. cached manifest in `~/.nowbox`
+3. fetch from the `Atro-Tech/nowbox` GitHub repo
+4. fetch from an explicit URL
+
+That gives nowbox a useful distribution model, but it also means manifests are part of the runtime trust boundary. The CLI is not purely offline unless the needed manifests are already cached locally.
 
 ## Developing
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -15,6 +16,39 @@ import (
 	"github.com/nowbox/nowbox/internal/webui"
 	"golang.org/x/term"
 )
+
+// ttyReader reads from /dev/tty so prompts work even when stdin is piped (curl | sh).
+var ttyReader *bufio.Reader
+
+func initTTY() {
+	f, err := os.Open("/dev/tty")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "nowbox: error: cannot open terminal for input\n")
+		os.Exit(1)
+	}
+	ttyReader = bufio.NewReader(f)
+}
+
+func prompt(label string) string {
+	fmt.Fprintf(os.Stderr, "%s", label)
+	line, _ := ttyReader.ReadString('\n')
+	return strings.TrimSpace(line)
+}
+
+func promptHidden(label string) string {
+	fmt.Fprintf(os.Stderr, "%s", label)
+	f, err := os.Open("/dev/tty")
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	b, err := term.ReadPassword(int(f.Fd()))
+	fmt.Fprintf(os.Stderr, "\n")
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
 
 func main() {
 	// CLI flags per spec: --host / -h, --agent / -a
@@ -39,13 +73,13 @@ func main() {
 		clientMode = args[2]
 	}
 
+	initTTY()
+
 	// Check for orphan from previous crash
 	if orphan := session.CheckOrphan(); orphan != nil {
 		fmt.Fprintf(os.Stderr, "nowbox: orphan sandbox found: %s (%s on %s)\n",
 			orphan.SessionName, orphan.InstanceID, orphan.Provider)
-		fmt.Fprintf(os.Stderr, "nowbox: destroy it? [y/N] ")
-		var answer string
-		fmt.Scanln(&answer)
+		answer := prompt("nowbox: destroy it? [y/N] ")
 		if strings.ToLower(answer) == "y" {
 			host, err := manifest.LoadHost(orphan.Provider)
 			if err != nil {
@@ -74,8 +108,7 @@ func main() {
 		for i, h := range hosts {
 			fmt.Fprintf(os.Stderr, "  [%d] %s — %s\n", i+1, h.Name, h.Description)
 		}
-		fmt.Fprintf(os.Stderr, "host: ")
-		fmt.Scanln(&hostName)
+		hostName = prompt("host: ")
 		hostName = resolveChoice(hostName, indexNames(hosts))
 	}
 
@@ -90,8 +123,7 @@ func main() {
 		for i, a := range agents {
 			fmt.Fprintf(os.Stderr, "  [%d] %s — %s\n", i+1, a.Name, a.Description)
 		}
-		fmt.Fprintf(os.Stderr, "agent: ")
-		fmt.Scanln(&agentName)
+		agentName = prompt("agent: ")
 		agentName = resolveChoice(agentName, indexNames(agents))
 	}
 
@@ -174,7 +206,6 @@ func main() {
 
 func collectHostVars(host *manifest.HostManifest) (map[string]string, error) {
 	vars := make(map[string]string, len(host.Keys.Required))
-	fd := int(os.Stdin.Fd())
 
 	for _, keyName := range host.Keys.Required {
 		if value := os.Getenv(keyName); value != "" {
@@ -182,23 +213,16 @@ func collectHostVars(host *manifest.HostManifest) (map[string]string, error) {
 			continue
 		}
 
-		prompt := host.Keys.Prompt
-		if prompt == "" {
-			prompt = keyName
-		}
-		fmt.Fprintf(os.Stderr, "  %s: ", prompt)
-
-		if !term.IsTerminal(fd) {
-			fmt.Fprintf(os.Stderr, "\n")
-			return nil, fmt.Errorf("%s required (set %s or run interactively)", keyName, keyName)
+		p := host.Keys.Prompt
+		if p == "" {
+			p = keyName
 		}
 
-		keyBytes, err := term.ReadPassword(fd)
-		fmt.Fprintf(os.Stderr, "\n")
-		if err != nil {
-			return nil, fmt.Errorf("error reading %s: %w", keyName, err)
+		value := promptHidden(fmt.Sprintf("  %s: ", p))
+		if value == "" {
+			return nil, fmt.Errorf("%s required", keyName)
 		}
-		vars[keyName] = string(keyBytes)
+		vars[keyName] = value
 	}
 
 	return vars, nil
