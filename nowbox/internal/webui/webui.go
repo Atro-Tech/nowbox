@@ -41,8 +41,14 @@ var upgrader = websocket.Upgrader{
 		if origin == "" {
 			return true
 		}
-		// Only allow our own localhost origin
-		return strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "http://localhost")
+		// Allow localhost and .local mDNS origins
+		if strings.HasPrefix(origin, "http://127.0.0.1") || strings.HasPrefix(origin, "http://localhost") {
+			return true
+		}
+		// http://session.local:port → strip scheme, strip port, check suffix
+		host := strings.TrimPrefix(origin, "http://")
+		host = strings.Split(host, ":")[0]
+		return strings.HasSuffix(host, ".local")
 	},
 }
 
@@ -202,7 +208,8 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *Se
 func registerMDNS(name string, port int) (*mdns.Server, error) {
 	host := name + "."
 	info := []string{"nowbox"}
-	service, err := mdns.NewMDNSService(name, "_http._tcp", "", host, port, nil, info)
+	ips := []net.IP{net.ParseIP("127.0.0.1")}
+	service, err := mdns.NewMDNSService(name, "_http._tcp", "", host, port, ips, info)
 	if err != nil {
 		return nil, err
 	}

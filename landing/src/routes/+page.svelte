@@ -86,13 +86,23 @@
 	}
 </script>
 
+<nav class="top-bar">
+	<div class="top-bar-spacer"></div>
+	<a href="/early-access" class="nav-link">sign in</a>
+	<a href="/early-access" class="nav-link nav-signup">sign up</a>
+</nav>
+
 <div class="page">
 	<div class="content">
 		<div class="logo-icon">
 			<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
 		</div>
 		<h1>nowbox</h1>
-		<p class="sub">instant ai agent sandboxes <a href="https://github.com/Atro-Tech/nowbox#readme" class="learn-more">learn more &rarr;</a></p>
+		<p class="sub">instant ai sandboxes. simple. agnostic. oss.</p>
+		<div class="links">
+			<div class="link-row"><span class="tree">├──</span> <a href="https://github.com/Atro-Tech/nowbox/blob/main/what_is_this.md" class="learn-more">what_is_this.md</a></div>
+			<div class="link-row"><span class="tree">└──</span> <a href="https://github.com/Atro-Tech/nowbox/blob/main/why_use_it.md" class="learn-more">why_use_it.md</a></div>
+		</div>
 
 		<div class="builder">
 			<div class="mode-row">
@@ -176,6 +186,8 @@
 				{/if}
 			</div>
 		</div>
+
+		<a href="/early-access" class="launch-btn">Launch on Nowbox Cloud</a>
 	</div>
 </div>
 
@@ -184,6 +196,66 @@
 </a>
 
 <style>
+	.top-bar {
+		position: fixed;
+		top: 0;
+		right: 0;
+		left: 0;
+		padding: 12px 20px;
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 12px;
+		z-index: 10;
+	}
+
+	.top-bar-spacer {
+		flex: 1;
+	}
+
+	.nav-link {
+		font-family: inherit;
+		font-size: 13px;
+		color: #555;
+		text-decoration: none;
+		padding: 6px 12px;
+		transition: color 0.1s;
+	}
+
+	.nav-link:hover {
+		color: #aaa;
+	}
+
+	.nav-signup {
+		border: 1px solid #333;
+	}
+
+	.nav-signup:hover {
+		border-color: #555;
+	}
+
+	.launch-btn {
+		display: block;
+		width: 100%;
+		padding: 14px;
+		margin-top: 24px;
+		background: transparent;
+		color: #e87a1e;
+		font-family: inherit;
+		font-size: 14px;
+		font-weight: 600;
+		text-align: center;
+		text-decoration: none;
+		border: 1px solid #e87a1e;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.launch-btn:hover {
+		background: #e87a1e;
+		color: #fff;
+	}
+
 	.page {
 		min-height: 100vh;
 		display: flex;
@@ -210,8 +282,27 @@
 
 	.sub {
 		color: #666;
-		margin: 0 0 40px 0;
+		margin: 0 0 8px 0;
 		font-size: 13px;
+	}
+
+	.links {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		margin: 0 0 40px 0;
+	}
+
+	.link-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 13px;
+	}
+
+	.tree {
+		color: #333;
+		font-size: 12px;
 	}
 
 	.builder {
@@ -271,8 +362,6 @@
 		align-items: stretch;
 		gap: 8px;
 		margin-bottom: 0;
-		margin-left: -40px;
-		margin-right: -40px;
 	}
 
 	.cmd {
@@ -307,7 +396,6 @@
 	}
 
 	.below-cmd {
-		min-height: 260px;
 	}
 
 	.demo-info {
@@ -451,5 +539,36 @@
 
 	.github-link:hover {
 		color: #888;
+	}
+
+	@media (max-width: 600px) {
+		.content {
+			padding: 24px 16px;
+		}
+
+		.cmd {
+			font-size: 13px;
+			padding: 14px 12px;
+		}
+
+		.tabs {
+			gap: 4px;
+		}
+
+		.tab-box {
+			padding: 10px 6px;
+			font-size: 12px;
+			gap: 5px;
+		}
+
+		.chip {
+			padding: 6px 10px;
+			font-size: 12px;
+		}
+
+		.pills {
+			gap: 6px;
+		}
+
 	}
 </style>

@@ -4,7 +4,7 @@
 </script>
 
 <svelte:head>
-	<title>nowbox — instant ai agent sandboxes</title>
+	<title>nowbox — ai sandboxes made easy</title>
 	<meta name="description" content="One command to spin up a cloud sandbox with any AI coding agent. Pick a host, pick an agent, go." />
 	<meta name="theme-color" content="#111111" />
 
