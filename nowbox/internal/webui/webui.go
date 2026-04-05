@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/hashicorp/mdns"
 	"github.com/nowbox/nowbox/internal/adapter"
+	"github.com/nowbox/nowbox/internal/token"
 )
 
 //go:embed page.html
@@ -45,9 +46,16 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+// SessionInfo holds the data needed to save a .now file from the web UI.
+type SessionInfo struct {
+	HostName  string
+	AgentName string
+	Vars      map[string]string
+}
+
 // Serve starts a local web server, opens the browser, and blocks until
 // the session ends.
-func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
+func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *SessionInfo) error {
 	// Pick a random port
 	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	if err != nil {
@@ -73,6 +81,44 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(html))
 	})
+
+	// Save handler — generates an encrypted .now file for this session
+	savePath := "/save/" + sessionToken
+	mux.HandleFunc(savePath, func(w http.ResponseWriter, r *http.Request) {
+		if info == nil {
+			http.Error(w, "no session info available", http.StatusInternalServerError)
+			return
+		}
+
+		// Filter vars to only include API keys (not SESSION_NAME etc)
+		vars := make(map[string]string)
+		for k, v := range info.Vars {
+			if k == "SESSION_NAME" || k == "INSTANCE_ID" {
+				continue
+			}
+			vars[k] = v
+		}
+
+		sealed, err := token.Seal(&token.Payload{
+			Host:  info.HostName,
+			Agent: info.AgentName,
+			Vars:  vars,
+		})
+		if err != nil {
+			http.Error(w, "failed to encrypt session", http.StatusInternalServerError)
+			return
+		}
+
+		script := fmt.Sprintf("#!/bin/sh\n# nowbox — %s + %s\nset -e\nexport NOWBOX_TOKEN=\"%s\"\ncurl -fsSL nowbox.lol | sh -s -- %s %s\n",
+			info.HostName, info.AgentName, sealed, info.HostName, info.AgentName)
+
+		filename := sessionName + ".now"
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+		w.Write([]byte(script))
+	})
+
+	html = strings.ReplaceAll(html, "{{SAVE_PATH}}", savePath)
 
 	// WebSocket proxy — browser ↔ remote stream
 	mux.HandleFunc(wsPath, func(w http.ResponseWriter, r *http.Request) {

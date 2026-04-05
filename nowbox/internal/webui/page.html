@@ -22,7 +22,7 @@
   #header .name { color: #eee; }
   #header .sep { color: #333; }
   #header .spacer { flex: 1; }
-  #quit {
+  .header-btn {
     font-family: inherit;
     font-size: 11px;
     padding: 2px 8px;
@@ -30,7 +30,9 @@
     color: #555;
     border: 1px solid #333;
     cursor: pointer;
+    text-decoration: none;
   }
+  .header-btn:hover { color: #aaa; border-color: #aaa; }
   #quit:hover { color: #f66; border-color: #f66; }
   #terminal { flex: 1; }
 </style>
@@ -41,7 +43,8 @@
   <span class="sep">│</span>
   <span>{{HOST_AGENT}}</span>
   <span class="spacer"></span>
-  <button id="quit" onclick="doQuit()">quit</button>
+  <a class="header-btn" href="{{SAVE_PATH}}" download>save</a>
+  <button id="quit" class="header-btn" onclick="doQuit()">quit</button>
 </div>
 <div id="terminal"></div>
 

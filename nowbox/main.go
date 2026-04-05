@@ -228,7 +228,11 @@ func main() {
 	case "cli":
 		err = terminal.Proxy(sess.Stream, sess.Name, hostAgent)
 	case "web":
-		err = webui.Serve(sess.Stream, sess.Name, hostAgent)
+		err = webui.Serve(sess.Stream, sess.Name, hostAgent, &webui.SessionInfo{
+			HostName:  host.Name,
+			AgentName: agent.Name,
+			Vars:      sess.Vars,
+		})
 	default:
 		fmt.Fprintf(os.Stderr, "nowbox: unknown client mode: %s\n", clientMode)
 		sess.Destroy()
