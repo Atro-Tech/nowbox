@@ -30,41 +30,62 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 	}
 	defer func() {
 		fmt.Fprintf(os.Stdout, "\033[r")    // reset scroll region
-		fmt.Fprintf(os.Stdout, "\033[2J")   // clear screen
-		fmt.Fprintf(os.Stdout, "\033[1;1H") // cursor home
+		fmt.Fprintf(os.Stdout, "\033[?25h") // show cursor
+		fmt.Fprintf(os.Stdout, "\033[0m")   // reset attributes
 		term.Restore(fd, oldState)
+		fmt.Fprintf(os.Stdout, "\r\n")
 	}()
 
 	var mu sync.Mutex
 	w, h := getSize(fd)
+	inAltScreen := false
+	pickingMode := false
+	pickIndex := 0
 
-	// Set xterm window title
 	title := fmt.Sprintf("%s — %s", sessionName, hostAgent)
 	setTitle := func() {
 		fmt.Fprintf(os.Stdout, "\033]0;%s\007", title)
 	}
 	setTitle()
 
-	// Setup scroll region and draw toolbar
-	setupLayout := func() {
+	// Show toolbar: scroll region rows 1..(h-1), bar on row h
+	showToolbar := func() {
 		mu.Lock()
 		defer mu.Unlock()
 		w, h = getSize(fd)
 		fmt.Fprintf(os.Stdout, "\033[1;%dr", h-1)
-		renderBar(w, h, sessionName, hostAgent, opts)
+		renderNormalBar(w, h, sessionName, hostAgent, opts)
 	}
-	setupLayout()
+
+	// Hide toolbar: full screen for alt-screen apps
+	hideToolbar := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		w, h = getSize(fd)
+		fmt.Fprintf(os.Stdout, "\033[r")
+	}
+
+	showToolbar()
 	fmt.Fprintf(os.Stdout, "\033[1;1H")
 	stream.Resize(w, h-1)
 
-	// Resize handler
 	watchResize(fd, func() {
 		setTitle()
-		setupLayout()
 		mu.Lock()
-		cw, ch := w, h
+		alt := inAltScreen
 		mu.Unlock()
-		stream.Resize(cw, ch-1)
+		if alt {
+			mu.Lock()
+			w, h = getSize(fd)
+			mu.Unlock()
+			stream.Resize(w, h)
+		} else {
+			showToolbar()
+			mu.Lock()
+			cw, ch := w, h
+			mu.Unlock()
+			stream.Resize(cw, ch-1)
+		}
 	})
 
 	done := make(chan struct{})
@@ -73,9 +94,6 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 	finish := func() { once.Do(func() { close(done) }) }
 
 	// Remote → stdout
-	// Track alt-screen: agent enters alt-screen on start, exits on quit.
-	// Only tear down after seeing enter THEN exit.
-	inAltScreen := false
 	go func() {
 		buf := make([]byte, 32*1024)
 		count := 0
@@ -84,20 +102,42 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 			if n > 0 {
 				os.Stdout.Write(buf[:n])
 				count++
+
+				// Periodic toolbar refresh (skip during alt-screen or picker)
 				if count%50 == 0 {
 					setTitle()
 					mu.Lock()
+					alt := inAltScreen
+					picking := pickingMode
 					cw, ch := w, h
 					mu.Unlock()
-					renderBar(cw, ch, sessionName, hostAgent, opts)
+					if !alt && !picking {
+						renderNormalBar(cw, ch, sessionName, hostAgent, opts)
+					}
 				}
 
 				chunk := string(buf[:n])
+
+				// Detect alt-screen enter
 				if contains(chunk, "\033[?1049h") {
+					mu.Lock()
 					inAltScreen = true
+					mu.Unlock()
+					hideToolbar()
+					mu.Lock()
+					cw, ch := w, h
+					mu.Unlock()
+					stream.Resize(cw, ch)
 				}
-				if inAltScreen && contains(chunk, "\033[?1049l") {
-					// Agent exited alt-screen — it quit
+
+				// Detect alt-screen exit
+				mu.Lock()
+				alt := inAltScreen
+				mu.Unlock()
+				if alt && contains(chunk, "\033[?1049l") {
+					mu.Lock()
+					inAltScreen = false
+					mu.Unlock()
 					finish()
 					return
 				}
@@ -119,6 +159,17 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 				return
 			}
 
+			mu.Lock()
+			picking := pickingMode
+			mu.Unlock()
+
+			// --- Picker mode: input goes to picker, not remote ---
+			if picking {
+				handlePickerInput(buf[:n], &mu, &pickingMode, &pickIndex, &nextMode, opts, w, h, sessionName, hostAgent, finish)
+				continue
+			}
+
+			// --- Normal mode ---
 			out := make([]byte, 0, n)
 			for i := 0; i < n; i++ {
 				switch buf[i] {
@@ -129,17 +180,18 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 					if opts != nil && opts.SaveFunc != nil {
 						go opts.SaveFunc()
 					}
-				case 0x1C: // Ctrl-\: switch mode
+				case 0x1C: // Ctrl-\: open mode picker
 					if opts != nil && len(opts.Modes) > 0 {
-						nextMode = opts.Modes[0]
-						finish()
-						return
+						mu.Lock()
+						pickingMode = true
+						pickIndex = 0
+						renderPickerBar(w, h, opts.Modes, 0)
+						mu.Unlock()
 					}
 				default:
 					out = append(out, buf[i])
 				}
 			}
-
 			if len(out) > 0 {
 				if _, writeErr := stream.Write(out); writeErr != nil {
 					finish()
@@ -153,6 +205,65 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 	return nextMode, nil
 }
 
+func handlePickerInput(input []byte, mu *sync.Mutex, pickingMode *bool, pickIndex *int, nextMode *string, opts *ProxyOptions, w, h int, session, hostAgent string, finish func()) {
+	n := len(input)
+	modes := opts.Modes
+
+	for i := 0; i < n; i++ {
+		b := input[i]
+
+		// Arrow keys: ESC [ A/B/C/D
+		if b == 0x1B && i+2 < n && input[i+1] == '[' {
+			switch input[i+2] {
+			case 'A', 'D': // Up or Left: previous
+				mu.Lock()
+				if *pickIndex > 0 {
+					*pickIndex--
+				}
+				renderPickerBar(w, h, modes, *pickIndex)
+				mu.Unlock()
+			case 'B', 'C': // Down or Right: next
+				mu.Lock()
+				if *pickIndex < len(modes)-1 {
+					*pickIndex++
+				}
+				renderPickerBar(w, h, modes, *pickIndex)
+				mu.Unlock()
+			}
+			i += 2
+			continue
+		}
+
+		switch b {
+		case '\t', 0x1C: // Tab or Ctrl-\: cycle
+			mu.Lock()
+			*pickIndex = (*pickIndex + 1) % len(modes)
+			renderPickerBar(w, h, modes, *pickIndex)
+			mu.Unlock()
+
+		case '\r', '\n': // Enter: confirm selection
+			mu.Lock()
+			*nextMode = modes[*pickIndex]
+			*pickingMode = false
+			mu.Unlock()
+			finish()
+			return
+
+		case 0x1B: // Escape (standalone): cancel
+			mu.Lock()
+			*pickingMode = false
+			renderNormalBar(w, h, session, hostAgent, opts)
+			mu.Unlock()
+
+		case 0x11: // Ctrl-Q: quit even during pick
+			finish()
+			return
+		}
+	}
+}
+
+// --- Bar rendering ---
+
 func getSize(fd int) (int, int) {
 	w, h, err := term.GetSize(fd)
 	if err != nil || h < 3 {
@@ -164,11 +275,11 @@ func getSize(fd int) (int, int) {
 	return w, h
 }
 
-func renderBar(width, height int, session, hostAgent string, opts *ProxyOptions) {
+func renderNormalBar(width, height int, session, hostAgent string, opts *ProxyOptions) {
 	fmt.Fprintf(os.Stdout, "\0337")              // save cursor
 	fmt.Fprintf(os.Stdout, "\033[%d;1H", height) // move to bottom row
 
-	left := fmt.Sprintf(" %s │ %s", session, hostAgent)
+	left := fmt.Sprintf(" %s | %s", session, hostAgent)
 
 	var shortcuts []string
 	if opts != nil && opts.SaveFunc != nil {
@@ -180,25 +291,58 @@ func renderBar(width, height int, session, hostAgent string, opts *ProxyOptions)
 	shortcuts = append(shortcuts, "^Q Quit")
 	right := " " + strings.Join(shortcuts, "  ") + " "
 
-	gap := width - runeLen(left) - runeLen(right)
+	gap := width - len(left) - len(right)
 	if gap < 1 {
 		gap = 1
 	}
 
 	bar := left + strings.Repeat(" ", gap) + right
-	if runeLen(bar) > width {
-		runes := []rune(bar)
-		bar = string(runes[:width])
+	if len(bar) > width {
+		bar = bar[:width]
 	}
 
-	fmt.Fprintf(os.Stdout, "\033[7m%s\033[0m", bar) // reverse video
-	fmt.Fprintf(os.Stdout, "\0338")                  // restore cursor
+	fmt.Fprintf(os.Stdout, "\033[7m%s\033[0m", bar)
+	fmt.Fprintf(os.Stdout, "\0338") // restore cursor
 }
 
-func runeLen(s string) int {
-	n := 0
-	for range s {
-		n++
+func renderPickerBar(width, height int, modes []string, selected int) {
+	fmt.Fprintf(os.Stdout, "\0337")              // save cursor
+	fmt.Fprintf(os.Stdout, "\033[%d;1H", height) // move to bottom row
+
+	// Build mode labels with selection highlight
+	label := " Switch to: "
+	var modeLabels []string
+	for i, m := range modes {
+		if i == selected {
+			modeLabels = append(modeLabels, fmt.Sprintf("\033[1m[%s]\033[22m", m))
+		} else {
+			modeLabels = append(modeLabels, m)
+		}
 	}
-	return n
+	modesStr := strings.Join(modeLabels, "  ")
+	left := label + modesStr
+
+	right := " Enter  Esc "
+
+	// Calculate gap using visual widths (strip ANSI for measurement)
+	leftVis := len(label)
+	for i, m := range modes {
+		if i == selected {
+			leftVis += len(m) + 2 // brackets
+		} else {
+			leftVis += len(m)
+		}
+		if i < len(modes)-1 {
+			leftVis += 2 // "  " separator
+		}
+	}
+
+	gap := width - leftVis - len(right)
+	if gap < 1 {
+		gap = 1
+	}
+
+	bar := left + strings.Repeat(" ", gap) + right
+	fmt.Fprintf(os.Stdout, "\033[7m%s\033[0m", bar)
+	fmt.Fprintf(os.Stdout, "\0338") // restore cursor
 }
