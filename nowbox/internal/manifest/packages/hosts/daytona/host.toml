@@ -1,0 +1,27 @@
+name = "daytona"
+description = "Daytona Sandbox"
+adapter = "http_exec"
+
+[keys]
+required = ["DAYTONA_API_KEY"]
+prompt = "daytona api key"
+
+[create]
+method = "POST"
+url = "https://app.daytona.io/api/sandbox"
+headers = { Authorization = "Bearer ${DAYTONA_API_KEY}", Content-Type = "application/json" }
+body = '{}'
+parse_id = ".id"
+
+[connect]
+url = "https://proxy.app.daytona.io/toolbox/${INSTANCE_ID}/process/session"
+headers = { Authorization = "Bearer ${DAYTONA_API_KEY}" }
+
+[destroy]
+method = "DELETE"
+url = "https://app.daytona.io/api/sandbox/${INSTANCE_ID}"
+headers = { Authorization = "Bearer ${DAYTONA_API_KEY}" }
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

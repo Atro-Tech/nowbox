@@ -21,6 +21,17 @@
   }
   #header .name { color: #eee; }
   #header .sep { color: #333; }
+  #header .spacer { flex: 1; }
+  #quit {
+    font-family: inherit;
+    font-size: 11px;
+    padding: 2px 8px;
+    background: transparent;
+    color: #555;
+    border: 1px solid #333;
+    cursor: pointer;
+  }
+  #quit:hover { color: #f66; border-color: #f66; }
   #terminal { flex: 1; }
 </style>
 </head>
@@ -29,6 +40,8 @@
   <span class="name">{{SESSION}}</span>
   <span class="sep">│</span>
   <span>{{HOST_AGENT}}</span>
+  <span class="spacer"></span>
+  <button id="quit" onclick="doQuit()">quit</button>
 </div>
 <div id="terminal"></div>
 
@@ -62,7 +75,12 @@ ws.onmessage = function(e) {
 
 ws.onclose = function() {
   term.write('\r\n\x1b[90m[disconnected]\x1b[0m\r\n');
+  document.getElementById('quit').textContent = 'closed';
 };
+
+function doQuit() {
+  ws.close();
+}
 
 term.onData(function(data) {
   if (ws.readyState === 1) {

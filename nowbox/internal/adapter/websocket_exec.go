@@ -70,7 +70,7 @@ func (a *WebSocketExec) Connect(instanceID string, vars map[string]string) (Stre
 		return nil, fmt.Errorf("parsing connect URL: %w", err)
 	}
 	q := u.Query()
-	for k, v := range cfg.Query {
+	for k, v := range manifest.ExpandMap(cfg.Query, vars) {
 		q.Set(k, v)
 	}
 	u.RawQuery = q.Encode()

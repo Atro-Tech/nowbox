@@ -1,0 +1,27 @@
+name = "runloop"
+description = "Runloop Devbox"
+adapter = "http_exec"
+
+[keys]
+required = ["RUNLOOP_API_KEY"]
+prompt = "runloop api key"
+
+[create]
+method = "POST"
+url = "https://api.runloop.ai/v1/devboxes"
+headers = { Authorization = "Bearer ${RUNLOOP_API_KEY}", Content-Type = "application/json" }
+body = '{}'
+parse_id = ".id"
+
+[connect]
+url = "https://api.runloop.ai/v1/devboxes/${INSTANCE_ID}/execute_sync"
+headers = { Authorization = "Bearer ${RUNLOOP_API_KEY}" }
+
+[destroy]
+method = "DELETE"
+url = "https://api.runloop.ai/v1/devboxes/${INSTANCE_ID}"
+headers = { Authorization = "Bearer ${RUNLOOP_API_KEY}" }
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

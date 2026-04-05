@@ -1,0 +1,25 @@
+name = "apple"
+description = "Apple Virtualization (macOS)"
+adapter = "apple_virt"
+
+# Apple Virtualization.framework is Swift-only, no REST API.
+# Requires a native Swift wrapper.
+# This manifest is a placeholder — needs a custom adapter.
+
+[keys]
+required = []
+
+[create]
+method = ""
+url = ""
+
+[connect]
+url = ""
+
+[destroy]
+method = ""
+url = ""
+
+[lifecycle]
+idle_timeout = ""
+heartbeat_interval = ""

@@ -24,7 +24,9 @@ func Proxy(stream adapter.Stream, sessionName string, hostAgent string) error {
 	}
 
 	setTitle()
-	sendResize(stream, fd)
+	if err := sendResize(stream, fd); err != nil {
+		return err
+	}
 
 	watchResize(stream, fd, setTitle)
 
@@ -67,7 +69,10 @@ func Proxy(stream adapter.Stream, sessionName string, hostAgent string) error {
 					return
 				}
 			}
-			stream.Write(buf[:n])
+			if _, err := stream.Write(buf[:n]); err != nil {
+				finish()
+				return
+			}
 		}
 	}()
 
@@ -75,10 +80,13 @@ func Proxy(stream adapter.Stream, sessionName string, hostAgent string) error {
 	return nil
 }
 
-func sendResize(stream adapter.Stream, fd int) {
+func sendResize(stream adapter.Stream, fd int) error {
 	w, h, err := term.GetSize(fd)
 	if err != nil {
-		return
+		return nil
 	}
-	stream.Resize(w, h)
+	if err := stream.Resize(w, h); err != nil {
+		return fmt.Errorf("sending resize: %w", err)
+	}
+	return nil
 }

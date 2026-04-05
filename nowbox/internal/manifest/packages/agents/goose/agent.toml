@@ -1,0 +1,12 @@
+name = "goose"
+description = "Goose (Block)"
+
+[setup]
+commands = [
+  "which goose || curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | bash",
+  "goose session"
+]
+
+[keys]
+optional = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"]
+self_auth = true

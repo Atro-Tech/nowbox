@@ -1,0 +1,12 @@
+name = "opencode"
+description = "OpenCode (terminal coding agent)"
+
+[setup]
+commands = [
+  "which opencode || curl -fsSL https://opencode.ai/install | bash",
+  "opencode"
+]
+
+[keys]
+optional = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]
+self_auth = true

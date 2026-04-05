@@ -1,0 +1,26 @@
+name = "codesandbox"
+description = "CodeSandbox Devbox"
+adapter = "codesandbox_sdk"
+
+# CodeSandbox devbox creation requires their TypeScript SDK.
+# No public REST API for devbox lifecycle.
+# This manifest is a placeholder — needs a custom adapter.
+
+[keys]
+required = ["CSB_API_KEY"]
+prompt = "codesandbox api key"
+
+[create]
+method = ""
+url = ""
+
+[connect]
+url = ""
+
+[destroy]
+method = ""
+url = ""
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

@@ -1,0 +1,26 @@
+name = "docker"
+description = "Local Docker container"
+adapter = "docker_exec"
+
+[keys]
+required = []
+
+[create]
+method = "POST"
+url = "http://localhost/v1.47/containers/create"
+headers = { Content-Type = "application/json" }
+body = '{"Image":"ubuntu:latest","Cmd":["sleep","infinity"],"Tty":true,"OpenStdin":true}'
+parse_id = ".Id"
+
+[connect]
+url = "http://localhost/v1.47/containers/${INSTANCE_ID}/exec"
+headers = { Content-Type = "application/json" }
+
+[destroy]
+method = "DELETE"
+url = "http://localhost/v1.47/containers/${INSTANCE_ID}?force=true"
+headers = {}
+
+[lifecycle]
+idle_timeout = ""
+heartbeat_interval = ""

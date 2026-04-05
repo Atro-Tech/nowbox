@@ -1,0 +1,27 @@
+name = "blaxel"
+description = "Blaxel Sandbox"
+adapter = "http_exec"
+
+[keys]
+required = ["BL_API_KEY"]
+prompt = "blaxel api key"
+
+[create]
+method = "POST"
+url = "https://api.blaxel.ai/sandboxes"
+headers = { Authorization = "Bearer ${BL_API_KEY}", Content-Type = "application/json" }
+body = '{"name":"${SESSION_NAME}"}'
+parse_id = ".id"
+
+[connect]
+url = "https://api.blaxel.ai/sandboxes/${INSTANCE_ID}/exec"
+headers = { Authorization = "Bearer ${BL_API_KEY}" }
+
+[destroy]
+method = "DELETE"
+url = "https://api.blaxel.ai/sandboxes/${INSTANCE_ID}"
+headers = { Authorization = "Bearer ${BL_API_KEY}" }
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

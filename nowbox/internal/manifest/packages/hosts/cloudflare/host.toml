@@ -1,0 +1,26 @@
+name = "cloudflare"
+description = "Cloudflare container"
+adapter = "cloudflare_worker"
+
+# Cloudflare sandboxes are created via Workers bindings, not external REST.
+# Requires deploying a Worker that wraps the Sandbox SDK.
+# This manifest is a placeholder — needs a custom adapter.
+
+[keys]
+required = ["CLOUDFLARE_API_TOKEN"]
+prompt = "cloudflare api token"
+
+[create]
+method = ""
+url = ""
+
+[connect]
+url = ""
+
+[destroy]
+method = ""
+url = ""
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

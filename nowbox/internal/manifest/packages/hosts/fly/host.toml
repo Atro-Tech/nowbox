@@ -1,0 +1,28 @@
+name = "fly.io"
+description = "Fly.io Machine"
+adapter = "ssh_exec"
+
+[keys]
+required = ["FLY_API_TOKEN"]
+prompt = "fly.io api token"
+
+[create]
+method = "POST"
+url = "https://api.machines.dev/v1/apps/${FLY_APP}/machines"
+headers = { Authorization = "Bearer ${FLY_API_TOKEN}", Content-Type = "application/json" }
+body = '{"name":"${SESSION_NAME}","region":"iad","config":{"image":"ubuntu:latest","init":{"exec":["/bin/bash"]},"guest":{"cpus":1,"memory_mb":256}}}'
+parse_id = ".id"
+
+[connect]
+# Fly.io has no REST exec — requires SSH via WireGuard
+url = ""
+headers = {}
+
+[destroy]
+method = "DELETE"
+url = "https://api.machines.dev/v1/apps/${FLY_APP}/machines/${INSTANCE_ID}?force=true"
+headers = { Authorization = "Bearer ${FLY_API_TOKEN}" }
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

@@ -1,9 +1,8 @@
 #!/bin/sh
 set -e
 
-REPO="nowbox/nowbox"
+REPO="Atro-Tech/nowbox"
 CACHE_DIR="${NOWBOX_CACHE_DIR:-$HOME/.cache/nowbox}"
-BINARY="$CACHE_DIR/nowbox"
 
 # Platform detection
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -14,10 +13,14 @@ case "$ARCH" in
 esac
 
 EXT=""
-if [ "$OS" = "windows" ] || [ "$OS" = "mingw"* ] || [ "$OS" = "msys"* ]; then
-  OS="windows"
-  EXT=".exe"
-fi
+case "$OS" in
+  mingw*|msys*|cygwin*|windows*)
+    OS="windows"
+    EXT=".exe"
+    ;;
+esac
+
+BINARY="$CACHE_DIR/nowbox${EXT}"
 
 NAME="nowbox-${OS}-${ARCH}${EXT}"
 BASE_URL="https://github.com/${REPO}/releases/latest/download"

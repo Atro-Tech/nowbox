@@ -1,0 +1,12 @@
+name = "aider"
+description = "Aider (AI pair programmer)"
+
+[setup]
+commands = [
+  "which aider || pip install -U aider-chat",
+  "aider"
+]
+
+[keys]
+optional = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]
+self_auth = false

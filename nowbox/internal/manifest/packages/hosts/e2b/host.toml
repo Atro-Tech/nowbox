@@ -1,0 +1,28 @@
+name = "e2b"
+description = "E2B Sandbox"
+adapter = "http_exec"
+
+[keys]
+required = ["E2B_API_KEY"]
+prompt = "e2b api key"
+
+[create]
+method = "POST"
+url = "https://api.e2b.dev/sandboxes"
+headers = { X-API-Key = "${E2B_API_KEY}", Content-Type = "application/json" }
+body = '{"templateID":"base","timeout":3600}'
+parse_id = ".sandboxId"
+
+[connect]
+# E2B uses gRPC for exec, not REST — requires SDK adapter
+url = ""
+headers = {}
+
+[destroy]
+method = "DELETE"
+url = "https://api.e2b.dev/sandboxes/${INSTANCE_ID}"
+headers = { X-API-Key = "${E2B_API_KEY}" }
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

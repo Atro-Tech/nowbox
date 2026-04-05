@@ -1,0 +1,28 @@
+name = "vercel"
+description = "Vercel Sandbox"
+adapter = "http_exec"
+
+[keys]
+required = ["VERCEL_TOKEN"]
+prompt = "vercel token"
+
+[create]
+method = "POST"
+url = "https://api.vercel.com/v1/sandboxes"
+headers = { Authorization = "Bearer ${VERCEL_TOKEN}", Content-Type = "application/json" }
+body = '{"runtime":"node24","resources":{"vcpus":2},"timeout":300000}'
+parse_id = ".sandbox.id"
+
+[connect]
+url = "https://api.vercel.com/v1/sandboxes/${INSTANCE_ID}/cmd"
+headers = { Authorization = "Bearer ${VERCEL_TOKEN}" }
+query = { wait = "true" }
+
+[destroy]
+method = "POST"
+url = "https://api.vercel.com/v1/sandboxes/${INSTANCE_ID}/stop"
+headers = { Authorization = "Bearer ${VERCEL_TOKEN}" }
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

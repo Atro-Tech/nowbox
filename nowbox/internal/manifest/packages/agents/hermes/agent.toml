@@ -1,0 +1,12 @@
+name = "hermes"
+description = "Hermes Agent (Nous Research)"
+
+[setup]
+commands = [
+  "which hermes || curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash",
+  "hermes"
+]
+
+[keys]
+optional = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"]
+self_auth = true

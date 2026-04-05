@@ -1,0 +1,26 @@
+name = "modal"
+description = "Modal container"
+adapter = "modal_sdk"
+
+# Modal has no public REST API for sandbox creation.
+# Requires Python SDK or connect tokens.
+# This manifest is a placeholder — needs a custom adapter.
+
+[keys]
+required = ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"]
+prompt = "modal token"
+
+[create]
+method = ""
+url = ""
+
+[connect]
+url = ""
+
+[destroy]
+method = ""
+url = ""
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

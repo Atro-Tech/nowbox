@@ -63,7 +63,10 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
 			for {
 				n, err := stream.Read(buf)
 				if n > 0 {
-					conn.WriteMessage(websocket.BinaryMessage, buf[:n])
+					if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+						finish()
+						return
+					}
 				}
 				if err != nil {
 					finish()
@@ -87,12 +90,18 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
 					Rows int    `json:"rows"`
 				}
 				if json.Unmarshal(data, &msg) == nil && msg.Type == "resize" {
-					stream.Resize(msg.Cols, msg.Rows)
+					if err := stream.Resize(msg.Cols, msg.Rows); err != nil {
+						finish()
+						return
+					}
 					continue
 				}
 			}
 			// Binary or non-resize text — send as input
-			stream.Write(data)
+			if _, err := stream.Write(data); err != nil {
+				finish()
+				return
+			}
 		}
 	})
 
@@ -100,6 +109,7 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
 	fmt.Fprintf(os.Stderr, "  web: %s\n", url)
 
 	go http.Serve(listener, mux)
+	defer listener.Close()
 
 	// Open browser
 	openBrowser(url)

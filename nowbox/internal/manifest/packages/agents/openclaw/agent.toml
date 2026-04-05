@@ -1,0 +1,12 @@
+name = "openclaw"
+description = "OpenClaw (AI assistant)"
+
+[setup]
+commands = [
+  "which openclaw || npm install -g openclaw@latest",
+  "openclaw agent"
+]
+
+[keys]
+optional = []
+self_auth = true

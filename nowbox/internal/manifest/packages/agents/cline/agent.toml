@@ -1,0 +1,12 @@
+name = "cline"
+description = "Cline (terminal AI agent)"
+
+[setup]
+commands = [
+  "which cline || npm install -g cline",
+  "cline"
+]
+
+[keys]
+optional = ["API_KEY", "CLINE_API_KEY"]
+self_auth = true

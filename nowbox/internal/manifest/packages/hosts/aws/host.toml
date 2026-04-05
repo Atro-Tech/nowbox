@@ -1,0 +1,26 @@
+name = "aws"
+description = "AWS ECS Fargate"
+adapter = "aws_ecs"
+
+# AWS ECS requires SigV4 auth, task definitions, VPC config.
+# Not a simple REST call — needs a custom adapter.
+# This manifest is a placeholder.
+
+[keys]
+required = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
+prompt = "aws access key"
+
+[create]
+method = ""
+url = ""
+
+[connect]
+url = ""
+
+[destroy]
+method = ""
+url = ""
+
+[lifecycle]
+idle_timeout = "5m"
+heartbeat_interval = "30s"

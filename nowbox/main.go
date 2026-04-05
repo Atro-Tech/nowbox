@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -46,19 +47,19 @@ func main() {
 		var answer string
 		fmt.Scanln(&answer)
 		if strings.ToLower(answer) == "y" {
-			// Load the host manifest to get the adapter for destroy
 			host, err := manifest.LoadHost(orphan.Provider)
-			if err == nil {
-				s := &session.Session{
-					Name:       orphan.SessionName,
-					InstanceID: orphan.InstanceID,
-					Host:       host,
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "nowbox: could not load host manifest for cleanup: %v\n", err)
+			} else {
+				vars, err := collectHostVars(host)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "nowbox: could not collect host credentials for cleanup: %v\n", err)
+				} else if err := session.DestroyOrphan(orphan.Provider, orphan.InstanceID, vars); err != nil {
+					fmt.Fprintf(os.Stderr, "nowbox: orphan cleanup failed: %v\n", err)
+				} else {
+					fmt.Fprintf(os.Stderr, "nowbox: destroyed orphan sandbox\n")
 				}
-				// TODO: needs adapter + vars to destroy properly
-				_ = s
 			}
-			session.ClearRecovery()
-			fmt.Fprintf(os.Stderr, "nowbox: cleared orphan record\n")
 		}
 	}
 
@@ -75,6 +76,7 @@ func main() {
 		}
 		fmt.Fprintf(os.Stderr, "host: ")
 		fmt.Scanln(&hostName)
+		hostName = resolveChoice(hostName, hostNames(hosts))
 	}
 
 	// If no agent specified, prompt
@@ -90,6 +92,7 @@ func main() {
 		}
 		fmt.Fprintf(os.Stderr, "agent: ")
 		fmt.Scanln(&agentName)
+		agentName = resolveChoice(agentName, agentNames(agents))
 	}
 
 	// Load manifests
@@ -106,27 +109,10 @@ func main() {
 	}
 
 	// Collect host keys — interactive prompts with hidden input
-	vars := make(map[string]string)
-	for _, keyName := range host.Keys.Required {
-		prompt := host.Keys.Prompt
-		if prompt == "" {
-			prompt = keyName
-		}
-		fmt.Fprintf(os.Stderr, "  %s: ", prompt)
-
-		fd := int(os.Stdin.Fd())
-		if !term.IsTerminal(fd) {
-			fmt.Fprintf(os.Stderr, "\nnowbox: error: %s required (run interactively)\n", keyName)
-			os.Exit(1)
-		}
-
-		keyBytes, err := term.ReadPassword(fd)
-		fmt.Fprintf(os.Stderr, "\n")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "nowbox: error reading key: %v\n", err)
-			os.Exit(1)
-		}
-		vars[keyName] = string(keyBytes)
+	vars, err := collectHostVars(host)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "nowbox: %v\n", err)
+		os.Exit(1)
 	}
 
 	// v0: agent keys are not collected — agent handles its own auth
@@ -152,7 +138,11 @@ func main() {
 	if len(agent.Setup.Commands) > 0 {
 		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
 		for _, cmd := range agent.Setup.Commands {
-			sess.Stream.Write([]byte(cmd + "\n"))
+			if _, err := sess.Stream.Write([]byte(cmd + "\n")); err != nil {
+				fmt.Fprintf(os.Stderr, "nowbox: setup failed: %v\n", err)
+				sess.Destroy()
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -180,4 +170,60 @@ func main() {
 		fmt.Fprintf(os.Stderr, "nowbox: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func collectHostVars(host *manifest.HostManifest) (map[string]string, error) {
+	vars := make(map[string]string, len(host.Keys.Required))
+	fd := int(os.Stdin.Fd())
+
+	for _, keyName := range host.Keys.Required {
+		if value := os.Getenv(keyName); value != "" {
+			vars[keyName] = value
+			continue
+		}
+
+		prompt := host.Keys.Prompt
+		if prompt == "" {
+			prompt = keyName
+		}
+		fmt.Fprintf(os.Stderr, "  %s: ", prompt)
+
+		if !term.IsTerminal(fd) {
+			fmt.Fprintf(os.Stderr, "\n")
+			return nil, fmt.Errorf("%s required (set %s or run interactively)", keyName, keyName)
+		}
+
+		keyBytes, err := term.ReadPassword(fd)
+		fmt.Fprintf(os.Stderr, "\n")
+		if err != nil {
+			return nil, fmt.Errorf("error reading %s: %w", keyName, err)
+		}
+		vars[keyName] = string(keyBytes)
+	}
+
+	return vars, nil
+}
+
+func resolveChoice(input string, options []string) string {
+	choice := strings.TrimSpace(input)
+	if idx, err := strconv.Atoi(choice); err == nil && idx >= 1 && idx <= len(options) {
+		return options[idx-1]
+	}
+	return choice
+}
+
+func hostNames(hosts []manifest.HostManifest) []string {
+	names := make([]string, 0, len(hosts))
+	for _, host := range hosts {
+		names = append(names, host.Name)
+	}
+	return names
+}
+
+func agentNames(agents []manifest.AgentManifest) []string {
+	names := make([]string, 0, len(agents))
+	for _, agent := range agents {
+		names = append(names, agent.Name)
+	}
+	return names
 }
