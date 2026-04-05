@@ -82,7 +82,7 @@ func main() {
 	flag.StringVar(&hostName, "h", "", "host provider (short)")
 	flag.StringVar(&agentName, "agent", "", "agent")
 	flag.StringVar(&agentName, "a", "", "agent (short)")
-	flag.StringVar(&clientMode, "client", "cli", "client mode: cli, web, mcp")
+	flag.StringVar(&clientMode, "client", "cli", "client mode: cli, browser, mcp")
 	flag.StringVar(&clientMode, "c", "cli", "client mode (short)")
 	flag.Parse()
 
@@ -226,7 +226,7 @@ func main() {
 	switch clientMode {
 	case "cli":
 		err = terminal.Proxy(sess.Stream, sess.Name, hostAgent)
-	case "web":
+	case "browser":
 		err = webui.Serve(sess.Stream, sess.Name, hostAgent, &webui.SessionInfo{
 			HostName:  host.Name,
 			AgentName: agent.Name,

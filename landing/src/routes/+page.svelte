@@ -41,7 +41,8 @@
 
 	const clients = [
 		{ id: 'cli', icon: `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4l3 3-3 3M8 10h3"/></svg>` },
-		{ id: 'web', icon: `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M2 7h10M7 2c-2 2-2 8 0 10M7 2c2 2 2 8 0 10"/></svg>` },
+		{ id: 'browser', icon: `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M2 7h10M7 2c-2 2-2 8 0 10M7 2c2 2 2 8 0 10"/></svg>` },
+		{ id: 'app', muted: true, icon: `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="10" height="8" rx="1"/><path d="M2 5h10"/></svg>` },
 		{ id: 'mcp', muted: true, icon: `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v8M11 3v8M3 7h8"/></svg>` },
 	];
 
