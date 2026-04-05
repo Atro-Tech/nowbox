@@ -209,6 +209,7 @@ func main() {
 	}()
 
 	// Send agent setup commands — drain output so user sees a clean terminal
+	agentInAltScreen := false
 	if len(agent.Setup.Commands) > 0 {
 		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
 
@@ -220,7 +221,10 @@ func main() {
 				case <-setupDone:
 					return
 				default:
-					sess.Stream.Read(buf)
+					n, _ := sess.Stream.Read(buf)
+					if n > 0 && strings.Contains(string(buf[:n]), "\033[?1049h") {
+						agentInAltScreen = true
+					}
 				}
 			}
 		}()
@@ -271,8 +275,9 @@ func main() {
 			otherModes := modesExcept(allModes, "cli")
 			var nextMode string
 			nextMode, err = terminal.Proxy(sess.Stream, sess.Name, hostAgent, &terminal.ProxyOptions{
-				Modes:    otherModes,
-				SaveFunc: saveFunc,
+				Modes:     otherModes,
+				SaveFunc:  saveFunc,
+				AltScreen: agentInAltScreen,
 			})
 			if nextMode != "" {
 				clientMode = nextMode

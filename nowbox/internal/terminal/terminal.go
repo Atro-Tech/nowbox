@@ -11,8 +11,9 @@ import (
 )
 
 type ProxyOptions struct {
-	Modes    []string     // modes available to switch to
-	SaveFunc func() error // generates a .now file
+	Modes     []string     // modes available to switch to
+	SaveFunc  func() error // generates a .now file
+	AltScreen bool         // agent is already in alt-screen (skip toolbar on start)
 }
 
 func contains(s, substr string) bool {
@@ -76,12 +77,18 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 		fmt.Fprintf(os.Stdout, "\033[r")
 	}
 
-	// Clear screen and set up layout
-	fmt.Fprintf(os.Stdout, "\033[2J")   // clear entire screen
-	fmt.Fprintf(os.Stdout, "\033[1;1H") // cursor home
-	showToolbar()
-	fmt.Fprintf(os.Stdout, "\033[1;1H") // cursor to content area
-	stream.Resize(w, h-1)
+	// Set up initial layout
+	if opts != nil && opts.AltScreen {
+		// Agent already in alt-screen — full passthrough, no toolbar
+		inAltScreen = true
+		stream.Resize(w, h)
+	} else {
+		fmt.Fprintf(os.Stdout, "\033[2J")   // clear entire screen
+		fmt.Fprintf(os.Stdout, "\033[1;1H") // cursor home
+		showToolbar()
+		fmt.Fprintf(os.Stdout, "\033[1;1H") // cursor to content area
+		stream.Resize(w, h-1)
+	}
 
 	watchResize(fd, func() {
 		setTitle()
@@ -299,7 +306,7 @@ func renderNormalBar(width, height int, session, hostAgent string, opts *ProxyOp
 	fmt.Fprintf(os.Stdout, "\0337")              // save cursor
 	fmt.Fprintf(os.Stdout, "\033[%d;1H", height) // move to bottom row
 
-	left := fmt.Sprintf(" nowbox | %s | %s", session, hostAgent)
+	left := fmt.Sprintf(" ⧉ nowbox | %s | %s", session, hostAgent)
 
 	var shortcuts []string
 	if opts != nil && opts.SaveFunc != nil {
