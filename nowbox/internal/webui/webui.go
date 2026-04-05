@@ -131,20 +131,16 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
 	})
 
 	// Register mDNS so the session is reachable at <session>.local
-	mdnsHost := sessionName + ".local"
 	mdnsServer, mdnsErr := registerMDNS(sessionName, port)
-	if mdnsErr != nil {
-		// mDNS failed — fall back to localhost
-		mdnsHost = fmt.Sprintf("localhost:%d", port)
-	}
 	if mdnsServer != nil {
 		defer mdnsServer.Shutdown()
 	}
 
-	url := fmt.Sprintf("http://%s:%d", mdnsHost, port)
+	var url string
 	if mdnsErr == nil {
-		// mDNS registered — use the .local name
-		url = fmt.Sprintf("http://%s:%d", sessionName+".local", port)
+		url = fmt.Sprintf("http://%s.local:%d", sessionName, port)
+	} else {
+		url = fmt.Sprintf("http://localhost:%d", port)
 	}
 	fmt.Fprintf(os.Stderr, "  web: %s\n", url)
 

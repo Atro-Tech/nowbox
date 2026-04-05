@@ -15,6 +15,7 @@ import (
 	"github.com/nowbox/nowbox/internal/terminal"
 	"github.com/nowbox/nowbox/internal/token"
 	"github.com/nowbox/nowbox/internal/webui"
+	"golang.org/x/term"
 )
 
 // ttyReader reads from /dev/tty so prompts work even when stdin is piped (curl | sh).
@@ -37,17 +38,38 @@ func prompt(label string) string {
 
 func promptHidden(label string) string {
 	fmt.Fprintf(os.Stderr, "%s", label)
-	// Read from /dev/tty as a line — strip any non-printable chars
-	// that terminal emulators inject on focus/click events
-	line, _ := ttyReader.ReadString('\n')
-	clean := strings.Map(func(r rune) rune {
-		if r >= 32 && r < 127 {
-			return r
+	f, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	// Disable echo so the key isn't shown
+	oldState, err := term.MakeRaw(int(f.Fd()))
+	if err != nil {
+		// Fall back to visible read
+		line, _ := ttyReader.ReadString('\n')
+		return strings.TrimSpace(line)
+	}
+	defer term.Restore(int(f.Fd()), oldState)
+
+	// Read until enter, stripping non-printable chars
+	var buf []byte
+	b := make([]byte, 1)
+	for {
+		n, err := f.Read(b)
+		if err != nil || n == 0 {
+			break
 		}
-		return -1
-	}, line)
+		if b[0] == '\r' || b[0] == '\n' {
+			break
+		}
+		if b[0] >= 32 && b[0] < 127 {
+			buf = append(buf, b[0])
+		}
+	}
 	fmt.Fprintf(os.Stderr, "\n")
-	return strings.TrimSpace(clean)
+	return string(buf)
 }
 
 func main() {
