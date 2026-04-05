@@ -10,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/nowbox/nowbox/internal/appui"
 	"github.com/nowbox/nowbox/internal/manifest"
 	"github.com/nowbox/nowbox/internal/mcpserver"
 	"github.com/nowbox/nowbox/internal/names"
@@ -83,7 +84,7 @@ func main() {
 	flag.StringVar(&hostName, "h", "", "host provider (short)")
 	flag.StringVar(&agentName, "agent", "", "agent")
 	flag.StringVar(&agentName, "a", "", "agent (short)")
-	flag.StringVar(&clientMode, "client", "cli", "client mode: cli, browser, mcp")
+	flag.StringVar(&clientMode, "client", "cli", "client mode: cli, browser, app, mcp")
 	flag.StringVar(&clientMode, "c", "cli", "client mode (short)")
 	flag.Parse()
 
@@ -240,6 +241,12 @@ func main() {
 		err = terminal.Proxy(sess.Stream, sess.Name, hostAgent)
 	case "browser":
 		err = webui.Serve(sess.Stream, sess.Name, hostAgent, &webui.SessionInfo{
+			HostName:  host.Name,
+			AgentName: agent.Name,
+			Vars:      sess.Vars,
+		})
+	case "app":
+		err = appui.Serve(sess.Stream, sess.Name, hostAgent, &appui.SessionInfo{
 			HostName:  host.Name,
 			AgentName: agent.Name,
 			Vars:      sess.Vars,
