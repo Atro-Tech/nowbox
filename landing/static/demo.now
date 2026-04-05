@@ -1,2 +1,5 @@
 #!/bin/sh
-curl -fsSL "nowbox.lol?host=sprites&agent=claude" | sh
+# nowbox demo — sprites + claude code (our keys, no setup needed)
+set -e
+export SPRITES_API_KEY="${SPRITES_API_KEY:-demo}"
+curl -fsSL nowbox.lol | sh -s -- sprites claude

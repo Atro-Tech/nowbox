@@ -1,5 +1,6 @@
 <script lang="ts">
 	let copied = $state(false);
+	let mode = $state<'simple' | 'demo' | 'customize'>('simple');
 	let host = $state('');
 	let agent = $state('');
 	let client = $state('');
@@ -45,6 +46,9 @@
 	];
 
 	function command() {
+		if (mode === 'demo') return `curl -fsSL ${origin}/demo.now | sh`;
+		if (mode === 'simple') return `curl -fsSL ${origin} | sh`;
+
 		const parts: string[] = [];
 		if (host) parts.push(host);
 		if (agent) parts.push(agent);
@@ -54,7 +58,13 @@
 	}
 
 	function commandHTML() {
+		if (mode === 'demo') {
+			return `<span style="color:#555">curl -fsSL ${origin}/demo.now | sh</span>`;
+		}
+
 		let s = `<span style="color:#555">curl -fsSL ${origin} | sh</span>`;
+		if (mode === 'simple') return s;
+
 		if (host || agent || (client && client !== 'cli')) {
 			s += `<span style="color:#555"> -s --</span>`;
 		}
@@ -84,6 +94,19 @@
 		<p class="sub">instant ai agent sandboxes <a href="https://github.com/Atro-Tech/nowbox#readme" class="learn-more">learn more &rarr;</a></p>
 
 		<div class="builder">
+			<div class="mode-row">
+				<button class="mode-btn" class:active={mode === 'simple'} onclick={() => mode = 'simple'}>
+					install
+				</button>
+				<button class="mode-btn" class:active={mode === 'demo'} onclick={() => mode = 'demo'}>
+					demo
+					<span class="mode-hint">use our keys</span>
+				</button>
+				<button class="mode-btn" class:active={mode === 'customize'} onclick={() => mode = 'customize'}>
+					customize
+				</button>
+			</div>
+
 			<div class="cmd-row">
 				<div class="cmd">
 					<span>{@html commandHTML()}</span>
@@ -93,51 +116,59 @@
 				</button>
 			</div>
 
-			<div class="tabs">
-				<button class="tab-box" class:active={activeTab === 'host'} onclick={() => activeTab = 'host'}>
-					<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><rect x="2" y="2" width="10" height="10" rx="1.5"/><path d="M2 6h10"/></svg>
-					<span>host</span>{#if host}<span class="host-c">{host}</span>{/if}
-				</button>
-				<button class="tab-box" class:active={activeTab === 'agent'} onclick={() => activeTab = 'agent'}>
-					<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M3 4l3 3-3 3M8 10h3"/></svg>
-					<span>agent</span>{#if agent}<span class="agent-c">{agent}</span>{/if}
-				</button>
-				<button class="tab-box" class:active={activeTab === 'client'} onclick={() => activeTab = 'client'}>
-					<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><circle cx="7" cy="7" r="5"/><path d="M2 7h10M7 2c-2 2-2 8 0 10M7 2c2 2 2 8 0 10"/></svg>
-					<span>client</span>{#if client}<span class="client-c">{client}</span>{/if}
-				</button>
-			</div>
+			{#if mode === 'demo'}
+				<div class="demo-info">
+					<p>sprites + claude code — no keys needed</p>
+				</div>
+			{/if}
 
-			<div class="pills-area">
-				{#if activeTab === 'host'}
-					<div class="pills">
-						{#each hosts as h}
-							<button class="chip" class:on={host === h.id} class:muted={h.muted} disabled={h.muted} onclick={() => host = toggle(host, h.id)}>
-								<span class="chip-icon">{@html h.icon}</span>
-								{h.id}
-							</button>
-						{/each}
-					</div>
-				{:else if activeTab === 'agent'}
-					<div class="pills">
-						{#each agents as a}
-							<button class="chip" class:on={agent === a.id} class:muted={a.muted} disabled={a.muted} onclick={() => agent = toggle(agent, a.id)}>
-								<span class="chip-icon">{@html a.icon}</span>
-								{a.id}
-							</button>
-						{/each}
-					</div>
-				{:else}
-					<div class="pills">
-						{#each clients as c}
-							<button class="chip" class:on={client === c.id} class:muted={c.muted} disabled={c.muted} onclick={() => client = toggle(client, c.id)}>
-								<span class="chip-icon">{@html c.icon}</span>
-								{c.id}
-							</button>
-						{/each}
-					</div>
-				{/if}
-			</div>
+			{#if mode === 'customize'}
+				<div class="tabs">
+					<button class="tab-box" class:active={activeTab === 'host'} onclick={() => activeTab = 'host'}>
+						<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><rect x="2" y="2" width="10" height="10" rx="1.5"/><path d="M2 6h10"/></svg>
+						<span>host</span>{#if host}<span class="host-c">{host}</span>{/if}
+					</button>
+					<button class="tab-box" class:active={activeTab === 'agent'} onclick={() => activeTab = 'agent'}>
+						<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M3 4l3 3-3 3M8 10h3"/></svg>
+						<span>agent</span>{#if agent}<span class="agent-c">{agent}</span>{/if}
+					</button>
+					<button class="tab-box" class:active={activeTab === 'client'} onclick={() => activeTab = 'client'}>
+						<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><circle cx="7" cy="7" r="5"/><path d="M2 7h10M7 2c-2 2-2 8 0 10M7 2c2 2 2 8 0 10"/></svg>
+						<span>client</span>{#if client}<span class="client-c">{client}</span>{/if}
+					</button>
+				</div>
+
+				<div class="pills-area">
+					{#if activeTab === 'host'}
+						<div class="pills">
+							{#each hosts as h}
+								<button class="chip" class:on={host === h.id} class:muted={h.muted} disabled={h.muted} onclick={() => host = toggle(host, h.id)}>
+									<span class="chip-icon">{@html h.icon}</span>
+									{h.id}
+								</button>
+							{/each}
+						</div>
+					{:else if activeTab === 'agent'}
+						<div class="pills">
+							{#each agents as a}
+								<button class="chip" class:on={agent === a.id} class:muted={a.muted} disabled={a.muted} onclick={() => agent = toggle(agent, a.id)}>
+									<span class="chip-icon">{@html a.icon}</span>
+									{a.id}
+								</button>
+							{/each}
+						</div>
+					{:else}
+						<div class="pills">
+							{#each clients as c}
+								<button class="chip" class:on={client === c.id} class:muted={c.muted} disabled={c.muted} onclick={() => client = toggle(client, c.id)}>
+									<span class="chip-icon">{@html c.icon}</span>
+									{c.id}
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -182,6 +213,61 @@
 		flex-direction: column;
 	}
 
+	.mode-row {
+		display: flex;
+		gap: 0;
+		margin-bottom: 16px;
+	}
+
+	.mode-btn {
+		flex: 1;
+		padding: 10px 8px;
+		font-family: inherit;
+		font-size: 13px;
+		color: #555;
+		background: transparent;
+		border: 1px solid #222;
+		border-right: none;
+		cursor: pointer;
+		transition: all 0.1s;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+	}
+
+	.mode-btn:last-child {
+		border-right: 1px solid #222;
+	}
+
+	.mode-btn:hover {
+		color: #888;
+		border-color: #444;
+	}
+
+	.mode-btn:hover + .mode-btn {
+		border-left-color: #444;
+	}
+
+	.mode-btn.active {
+		color: #eee;
+		border-color: #eee;
+	}
+
+	.mode-btn.active + .mode-btn {
+		border-left-color: #eee;
+	}
+
+	.mode-hint {
+		font-size: 10px;
+		color: #555;
+		opacity: 0.7;
+	}
+
+	.mode-btn.active .mode-hint {
+		color: #888;
+	}
+
 	.cmd-row {
 		display: flex;
 		align-items: stretch;
@@ -220,6 +306,17 @@
 
 	.copy-btn :global(svg) {
 		display: block;
+	}
+
+	.demo-info {
+		color: #555;
+		font-size: 12px;
+		text-align: center;
+		margin-top: -16px;
+	}
+
+	.demo-info p {
+		margin: 0;
 	}
 
 	.host-c { color: #7dd3fc; }
