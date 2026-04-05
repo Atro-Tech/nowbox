@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/nowbox/nowbox/internal/appui"
 	"github.com/nowbox/nowbox/internal/manifest"
@@ -207,16 +208,34 @@ func main() {
 		os.Exit(130)
 	}()
 
-	// Send agent setup commands
+	// Send agent setup commands — drain output so user sees a clean terminal
 	if len(agent.Setup.Commands) > 0 {
 		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
+
+		setupDone := make(chan struct{})
+		go func() {
+			buf := make([]byte, 4096)
+			for {
+				select {
+				case <-setupDone:
+					return
+				default:
+					sess.Stream.Read(buf)
+				}
+			}
+		}()
+
 		for _, cmd := range agent.Setup.Commands {
 			if _, err := sess.Stream.Write([]byte(cmd + "\n")); err != nil {
+				close(setupDone)
 				fmt.Fprintf(os.Stderr, "nowbox: setup failed: %v\n", err)
 				sess.Destroy()
 				os.Exit(1)
 			}
 		}
+
+		time.Sleep(3 * time.Second)
+		close(setupDone)
 	}
 
 	fmt.Fprintf(os.Stderr, "  ready\n")

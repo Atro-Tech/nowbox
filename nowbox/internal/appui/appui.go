@@ -177,6 +177,7 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *Se
 	// Open native window
 	w := webview.New(false)
 	defer w.Destroy()
+	setAppIcon()
 
 	w.SetTitle(sessionName + " — " + hostAgent)
 	w.SetSize(960, 640, webview.HintNone)

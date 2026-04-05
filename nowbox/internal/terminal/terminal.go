@@ -49,10 +49,20 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 	setTitle()
 
 	// Show toolbar: scroll region rows 1..(h-1), bar on row h
+	prevH := h
 	showToolbar := func() {
 		mu.Lock()
 		defer mu.Unlock()
+		oldH := prevH
 		w, h = getSize(fd)
+		// Clear old bar row if height changed
+		if oldH != h && oldH > 0 {
+			fmt.Fprintf(os.Stdout, "\0337")
+			fmt.Fprintf(os.Stdout, "\033[r")                // temporarily reset scroll region
+			fmt.Fprintf(os.Stdout, "\033[%d;1H\033[2K", oldH) // clear old bar row
+			fmt.Fprintf(os.Stdout, "\0338")
+		}
+		prevH = h
 		fmt.Fprintf(os.Stdout, "\033[1;%dr", h-1)
 		renderNormalBar(w, h, sessionName, hostAgent, opts)
 	}
@@ -62,11 +72,15 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 		mu.Lock()
 		defer mu.Unlock()
 		w, h = getSize(fd)
+		prevH = h
 		fmt.Fprintf(os.Stdout, "\033[r")
 	}
 
+	// Clear screen and set up layout
+	fmt.Fprintf(os.Stdout, "\033[2J")   // clear entire screen
+	fmt.Fprintf(os.Stdout, "\033[1;1H") // cursor home
 	showToolbar()
-	fmt.Fprintf(os.Stdout, "\033[1;1H")
+	fmt.Fprintf(os.Stdout, "\033[1;1H") // cursor to content area
 	stream.Resize(w, h-1)
 
 	watchResize(fd, func() {
@@ -172,6 +186,12 @@ func Proxy(stream adapter.Stream, sessionName, hostAgent string, opts *ProxyOpti
 			// --- Normal mode ---
 			out := make([]byte, 0, n)
 			for i := 0; i < n; i++ {
+				// Filter terminal focus events: ESC [ I (focus in) and ESC [ O (focus out)
+				if buf[i] == 0x1B && i+2 < n && buf[i+1] == '[' && (buf[i+2] == 'I' || buf[i+2] == 'O') {
+					i += 2
+					continue
+				}
+
 				switch buf[i] {
 				case 0x11: // Ctrl-Q: quit
 					finish()
@@ -279,7 +299,7 @@ func renderNormalBar(width, height int, session, hostAgent string, opts *ProxyOp
 	fmt.Fprintf(os.Stdout, "\0337")              // save cursor
 	fmt.Fprintf(os.Stdout, "\033[%d;1H", height) // move to bottom row
 
-	left := fmt.Sprintf(" %s | %s", session, hostAgent)
+	left := fmt.Sprintf(" nowbox | %s | %s", session, hostAgent)
 
 	var shortcuts []string
 	if opts != nil && opts.SaveFunc != nil {

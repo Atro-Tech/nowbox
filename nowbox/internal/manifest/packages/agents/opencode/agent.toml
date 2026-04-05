@@ -3,8 +3,8 @@ description = "OpenCode (terminal coding agent)"
 
 [setup]
 commands = [
-  "which opencode || curl -fsSL https://opencode.ai/install | bash",
-  "opencode"
+  "which opencode || (curl -fsSL https://opencode.ai/install | bash && export PATH=\"$HOME/.local/bin:$PATH\")",
+  "export PATH=\"$HOME/.local/bin:$PATH\" && opencode"
 ]
 
 [keys]
