@@ -15,7 +15,6 @@ import (
 	"github.com/nowbox/nowbox/internal/terminal"
 	"github.com/nowbox/nowbox/internal/token"
 	"github.com/nowbox/nowbox/internal/webui"
-	"golang.org/x/term"
 )
 
 // ttyReader reads from /dev/tty so prompts work even when stdin is piped (curl | sh).
