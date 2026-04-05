@@ -280,6 +280,24 @@ func resolveChoice(input string, options []string) string {
 	return choice
 }
 
+func loadToken(tok string, hostName *string, agentName *string) {
+	p, err := token.Open(tok)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "nowbox: invalid token: %v\n", err)
+		os.Exit(1)
+	}
+	if *hostName == "" {
+		*hostName = p.Host
+	}
+	if *agentName == "" {
+		*agentName = p.Agent
+	}
+	// Inject vars as env vars so collectHostVars picks them up
+	for k, v := range p.Vars {
+		os.Setenv(k, v)
+	}
+}
+
 func indexNames(entries []manifest.IndexEntry) []string {
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
