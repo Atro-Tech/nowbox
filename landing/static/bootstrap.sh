@@ -37,7 +37,7 @@ fi
 
 # Check cache
 if [ -x "$BINARY" ]; then
-  exec "$BINARY" "$@"
+  exec "$BINARY" "$@" </dev/tty
 fi
 
 # Download binary + checksum
@@ -80,4 +80,4 @@ chmod +x "$TMP"
 mv "$TMP" "$BINARY"
 
 echo "nowbox: ready" >&2
-exec "$BINARY" "$@"
+exec "$BINARY" "$@" </dev/tty
