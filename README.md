@@ -105,7 +105,6 @@ The repo currently ships manifests for:
 - `aider`
 - `cline`
 - `goose`
-- `hermes`
 - `openclaw`
 - `opencode`
 

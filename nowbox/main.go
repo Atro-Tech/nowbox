@@ -37,7 +37,7 @@ func prompt(label string) string {
 
 func promptHidden(label string) string {
 	fmt.Fprintf(os.Stderr, "%s", label)
-	f, err := os.Open("/dev/tty")
+	f, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {
 		return ""
 	}
