@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/nowbox/nowbox/internal/appui"
 	"github.com/nowbox/nowbox/internal/manifest"
@@ -208,38 +207,16 @@ func main() {
 		os.Exit(130)
 	}()
 
-	// Send agent setup commands — drain output so user sees a clean terminal
-	agentInAltScreen := false
+	// Send agent setup commands
 	if len(agent.Setup.Commands) > 0 {
 		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
-
-		setupDone := make(chan struct{})
-		go func() {
-			buf := make([]byte, 4096)
-			for {
-				select {
-				case <-setupDone:
-					return
-				default:
-					n, _ := sess.Stream.Read(buf)
-					if n > 0 && strings.Contains(string(buf[:n]), "\033[?1049h") {
-						agentInAltScreen = true
-					}
-				}
-			}
-		}()
-
 		for _, cmd := range agent.Setup.Commands {
 			if _, err := sess.Stream.Write([]byte(cmd + "\n")); err != nil {
-				close(setupDone)
 				fmt.Fprintf(os.Stderr, "nowbox: setup failed: %v\n", err)
 				sess.Destroy()
 				os.Exit(1)
 			}
 		}
-
-		time.Sleep(3 * time.Second)
-		close(setupDone)
 	}
 
 	fmt.Fprintf(os.Stderr, "  ready\n")
@@ -275,9 +252,8 @@ func main() {
 			otherModes := modesExcept(allModes, "cli")
 			var nextMode string
 			nextMode, err = terminal.Proxy(sess.Stream, sess.Name, hostAgent, &terminal.ProxyOptions{
-				Modes:     otherModes,
-				SaveFunc:  saveFunc,
-				AltScreen: agentInAltScreen,
+				Modes:    otherModes,
+				SaveFunc: saveFunc,
 			})
 			if nextMode != "" {
 				clientMode = nextMode
