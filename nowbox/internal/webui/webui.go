@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/hashicorp/mdns"
 	"github.com/nowbox/nowbox/internal/adapter"
 )
 
@@ -48,7 +49,7 @@ var upgrader = websocket.Upgrader{
 // the session ends.
 func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
 	// Pick a random port
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	if err != nil {
 		return fmt.Errorf("starting web server: %w", err)
 	}
@@ -129,18 +130,45 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string) error {
 		}
 	})
 
-	url := fmt.Sprintf("http://localhost:%d", port)
+	// Register mDNS so the session is reachable at <session>.local
+	mdnsHost := sessionName + ".local"
+	mdnsServer, mdnsErr := registerMDNS(sessionName, port)
+	if mdnsErr != nil {
+		// mDNS failed — fall back to localhost
+		mdnsHost = fmt.Sprintf("localhost:%d", port)
+	}
+	if mdnsServer != nil {
+		defer mdnsServer.Shutdown()
+	}
+
+	url := fmt.Sprintf("http://%s:%d", mdnsHost, port)
+	if mdnsErr == nil {
+		// mDNS registered — use the .local name
+		url = fmt.Sprintf("http://%s:%d", sessionName+".local", port)
+	}
 	fmt.Fprintf(os.Stderr, "  web: %s\n", url)
 
 	go http.Serve(listener, mux)
 	defer listener.Close()
 
-	// Open browser
 	openBrowser(url)
 
-	// Block until session ends
 	<-done
 	return nil
+}
+
+func registerMDNS(name string, port int) (*mdns.Server, error) {
+	host := name + "."
+	info := []string{"nowbox"}
+	service, err := mdns.NewMDNSService(name, "_http._tcp", "", host, port, nil, info)
+	if err != nil {
+		return nil, err
+	}
+	server, err := mdns.NewServer(&mdns.Config{Zone: service})
+	if err != nil {
+		return nil, err
+	}
+	return server, nil
 }
 
 func openBrowser(url string) {
