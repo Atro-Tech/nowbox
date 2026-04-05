@@ -5,10 +5,12 @@ package terminal
 import (
 	"time"
 
+	"github.com/nowbox/nowbox/internal/adapter"
 	"golang.org/x/term"
 )
 
-func watchResize(fd int, onResize func()) {
+func watchResize(stream adapter.Stream, fd int, onResize func()) {
+	// Windows has no SIGWINCH. Poll for size changes.
 	go func() {
 		lastW, lastH, _ := term.GetSize(fd)
 		for {
@@ -19,6 +21,7 @@ func watchResize(fd int, onResize func()) {
 			}
 			if w != lastW || h != lastH {
 				lastW, lastH = w, h
+				sendResize(stream, fd)
 				onResize()
 			}
 		}
