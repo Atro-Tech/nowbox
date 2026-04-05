@@ -48,7 +48,7 @@ func promptHidden(label string) string {
 	if err != nil {
 		return ""
 	}
-	return string(b)
+	return strings.TrimSpace(string(b))
 }
 
 func main() {
