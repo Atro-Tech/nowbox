@@ -112,7 +112,7 @@
 				{#if activeTab === 'host'}
 					<div class="pills">
 						{#each hosts as h}
-							<button class="chip" class:on={host === h.id} onclick={() => host = toggle(host, h.id)}>
+							<button class="chip" class:on={host === h.id} class:muted={h.muted} disabled={h.muted} onclick={() => host = toggle(host, h.id)}>
 								<span class="chip-icon">{@html h.icon}</span>
 								{h.id}
 							</button>
@@ -121,7 +121,7 @@
 				{:else if activeTab === 'agent'}
 					<div class="pills">
 						{#each agents as a}
-							<button class="chip" class:on={agent === a.id} onclick={() => agent = toggle(agent, a.id)}>
+							<button class="chip" class:on={agent === a.id} class:muted={a.muted} disabled={a.muted} onclick={() => agent = toggle(agent, a.id)}>
 								<span class="chip-icon">{@html a.icon}</span>
 								{a.id}
 							</button>
@@ -130,7 +130,7 @@
 				{:else}
 					<div class="pills">
 						{#each clients as c}
-							<button class="chip" class:on={client === c.id} onclick={() => client = toggle(client, c.id)}>
+							<button class="chip" class:on={client === c.id} class:muted={c.muted} disabled={c.muted} onclick={() => client = toggle(client, c.id)}>
 								<span class="chip-icon">{@html c.icon}</span>
 								{c.id}
 							</button>
@@ -295,6 +295,15 @@
 
 	.chip:hover {
 		color: #888;
+	}
+
+	.chip.muted {
+		opacity: 0.25;
+		cursor: default;
+	}
+
+	.chip.muted:hover {
+		color: #444;
 	}
 
 	.chip.on {
