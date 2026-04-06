@@ -1,44 +1,107 @@
 # nowbox
 
-**Instant AI agent sandboxes.**
+**nowbox is a tool to simplify agent sandboxes.**
+
+It gives you one consistent way to:
+
+- boot an agent inside a sandbox
+- connect to it immediately
+- save that setup as a reusable `.now` launcher
+- reopen it later
+- share that launcher when you want someone else to use the same setup
+- switch between interfaces: CLI, browser, native app, or MCP
+
+The core idea is simple:
+
+1. pick a sandbox host
+2. pick an agent
+3. boot fast
+4. connect directly from your device to the sandbox
+5. throw the session away, or save the launcher for later
 
 [![GitHub Release](https://img.shields.io/github/v/release/Atro-Tech/nowbox)](https://github.com/Atro-Tech/nowbox/releases)
 [![License](https://img.shields.io/github/license/Atro-Tech/nowbox)](LICENSE)
 
-nowbox is a thin Go CLI that provisions an ephemeral sandbox, installs an agent with manifest-defined commands, and drops you into either a native terminal or a browser terminal.
+## What nowbox is
+
+nowbox is not trying to be a big hosted control plane.
+
+It is a thin bootstrap and connection layer for agent sandboxes.
+
+The goal is:
+
+- make sandboxes easy to start
+- make agent setup easy to repeat
+- keep the path from your machine to the sandbox as direct as possible
+
+That is the p2p-ish model behind the project:
+
+- your device talks to the sandbox
+- nowbox helps create and connect the session
+- the website only helps you get started
+
+## The Simplest Way To Use It
+
+### Demo script
+
+```sh
+curl -fsSL nowbox.lol/demo.now | sh
+```
+
+This is the fastest way to understand what nowbox feels like.
+
+What `demo.now` is:
+
+- a saved nowbox launcher
+- a small shell script
+- a preconfigured setup for **Sprites + Claude Code**
+- backed by a token already embedded into the script
+
+So instead of setting up your own host account first, you just run it and land in a working demo flow.
+
+Important:
+
+- this uses **our demo Sprites instance**
+- the script includes access for demo purposes
+- do not treat it as private or production-safe
+- do not put secrets or sensitive work in it
+
+Use it to see the flow. Use your own host setup for real work.
+
+## The Next Step: Your Own Custom Launch
+
+If you want your own sandbox instead of the demo, use the normal bootstrap command:
+
+```sh
+curl -fsSL nowbox.lol | sh -s -- <host> <agent> [interface]
+```
+
+Examples:
 
 ```sh
 curl -fsSL nowbox.lol | sh -s -- sprites claude
+curl -fsSL nowbox.lol | sh -s -- sprites codex
+curl -fsSL nowbox.lol | sh -s -- daytona codex
+curl -fsSL nowbox.lol | sh -s -- daytona codex browser
+curl -fsSL nowbox.lol | sh -s -- vercel aider
 ```
 
-The point is portability: one CLI, one manifest format, multiple sandbox providers and agents.
+What this does:
 
-## Current Status
+- downloads `nowbox` if needed
+- prompts for any required host credentials
+- creates the sandbox
+- runs the agent setup
+- connects you to it
 
-nowbox is early-stage. The repo already contains a broad host and agent catalog, but not every manifest is production-ready yet.
+If you omit the interface, nowbox uses the CLI by default.
 
-Today, the codebase is best described as:
+## Installed Syntax
 
-- A working CLI/runtime for manifest-driven sandbox sessions
-- A working landing site for `nowbox.lol`
-- A support matrix with a mix of working adapters, experimental adapters, and placeholders
-
-If you publish the repo as-is, set expectations accordingly: this is an ambitious prototype with a strong direction, not a finished cross-provider platform.
-
-## Install
+Once you have the binary, the main command is:
 
 ```sh
-curl -fsSL nowbox.lol | sh
-```
-
-That downloads the matching release binary for your platform and caches it under `~/.cache/nowbox`.
-
-You can also download binaries directly from [GitHub Releases](https://github.com/Atro-Tech/nowbox/releases).
-
-## Usage
-
-```sh
-nowbox <host> <agent> [client]
+nowbox <host> <agent> [interface]
 ```
 
 Examples:
@@ -46,59 +109,315 @@ Examples:
 ```sh
 nowbox sprites claude
 nowbox sprites codex
-nowbox vercel codex
-nowbox daytona aider web
+nowbox daytona codex browser
+nowbox sprites claude mcp
 ```
 
-If you omit the host or agent, nowbox will prompt you interactively.
+There is also a create mode:
 
-### Client modes
+```sh
+nowbox create <host> <agent>
+```
 
-| Mode | Status | Notes |
-| --- | --- | --- |
-| `cli` | supported | Native terminal proxy |
-| `web` | supported | Browser terminal UI |
-| `mcp` | not implemented | Listed in some UI/docs, but not available in the CLI yet |
+That writes a reusable `.now` launcher up front without opening a session first.
 
-### Flags
+## Ephemeral Sessions
+
+The default nowbox mental model is ephemeral sessions.
+
+That means:
+
+- you boot a sandbox
+- you connect to it
+- you do the work
+- nowbox tears it down when the session ends
+
+This is the default because the product is optimized for fast bootstrap, not long-lived environment management.
+
+## `.now` Files
+
+`.now` files are saved nowbox launchers.
+
+They are the bridge between:
+
+- a one-off ephemeral session
+- and a reusable template you can run again later
+
+### Create a `.now` file up front
+
+```sh
+nowbox create sprites claude
+```
+
+That creates a file with a generated name like:
 
 ```text
---host,   -h    Host provider
---agent,  -a    Agent
---client, -c    Client mode (cli, web)
+brave-owl-4821.now
 ```
 
-## What Actually Works Today
+Then you can run it with:
 
-The codebase currently has two connection paths:
+```sh
+sh brave-owl-4821.now
+```
 
-- `websocket_exec`: full interactive terminal streaming over WebSocket
-- `http_exec`: request/response style execution over HTTP
+### Save a `.now` file from a running session
 
-That means host support is not all-or-nothing. Some manifests are materially usable, some are experimental, and some are clearly placeholders for future adapters.
+You can also save from inside the session UI:
 
-### Host support
+- CLI: use the save shortcut shown in the toolbar
+- browser: click `save`
+- native app: click `save`
 
-| Host | Status | Notes |
-| --- | --- | --- |
-| `sprites` | best-supported | Uses the WebSocket exec path and matches the current interactive terminal model best |
-| `vercel` | experimental | Uses HTTP exec; manifest exists, but needs real-world validation as a terminal experience |
-| `daytona` | experimental | Same as above |
-| `runloop` | experimental | Same as above |
-| `blaxel` | experimental | Same as above |
-| `docker` | experimental | Manifest exists, but this is not a real Docker attach flow yet |
-| `podman` | experimental | Same caveat as Docker |
-| `e2b` | incomplete | Create/destroy manifest exists, connect path is empty |
-| `fly.io` | incomplete | Needs SSH/WireGuard-style adapter |
-| `aws` | placeholder | Needs provider-specific adapter/auth flow |
-| `cloudflare` | placeholder | Needs custom adapter/runtime wrapper |
-| `codesandbox` | placeholder | Needs SDK-backed adapter |
-| `modal` | placeholder | Needs SDK-backed adapter |
-| `apple` | placeholder | Needs native adapter |
+### What is inside a `.now` file
 
-### Agent support
+A `.now` file is a shell launcher that:
 
-The repo currently ships manifests for:
+- stores an encrypted `NOWBOX_TOKEN`
+- tries the cached `nowbox` binary first
+- falls back to downloading `nowbox` if needed
+- relaunches the saved setup
+
+### Reusing `.now` files
+
+This is the easiest way to keep preferred setups around.
+
+Examples:
+
+- one `.now` for Sprites + Claude Code
+- one `.now` for Daytona + Codex
+- one `.now` for a browser-first workflow
+
+### Sharing `.now` files
+
+You can share a `.now` file if you want someone else to boot the same saved setup.
+
+That makes `.now` files useful for:
+
+- demos
+- onboarding
+- repeatable templates
+- handing someone a working launch path instead of a setup guide
+
+Treat them carefully:
+
+- a `.now` file can carry access through its embedded token
+- it is not just a harmless config file
+- only share it intentionally
+
+This is not yet a full hosted multiplayer session system. Richer hosted sharing is still future work.
+
+## Cached Bootstrap vs Install
+
+If you run:
+
+```sh
+curl -fsSL nowbox.lol | sh
+```
+
+nowbox downloads the binary into its cache and runs it from there.
+
+The cache path is:
+
+```text
+~/.cache/nowbox/nowbox
+```
+
+That is enough for repeated bootstrap use, but it does not necessarily put `nowbox` on your normal shell `PATH`.
+
+## Install For Persistent Use
+
+If you want a more permanent install:
+
+```sh
+curl -fsSL nowbox.lol | sh -s -- install
+```
+
+What that does depends on the platform:
+
+- macOS: installs a local `nowbox.app` and also tries to place the CLI on your `PATH`
+- Linux: installs the binary into `/usr/local/bin` or `~/.local/bin`
+
+After that, you can call it directly like this:
+
+```sh
+nowbox sprites claude
+```
+
+You can also download binaries from [GitHub Releases](https://github.com/Atro-Tech/nowbox/releases).
+
+## Interfaces
+
+nowbox supports multiple ways to interact with the same session.
+
+Syntax:
+
+```sh
+nowbox <host> <agent> [interface]
+```
+
+### CLI
+
+```sh
+nowbox sprites claude
+```
+
+This is the default interface.
+
+Use it when you want:
+
+- the fastest path
+- a terminal-native workflow
+- no extra mode flag
+
+### Browser
+
+```sh
+nowbox sprites claude browser
+```
+
+This opens a local browser-based terminal UI.
+
+Use it when you want:
+
+- a local web view
+- a save button for `.now` files
+- a lightweight UI without the native app build path
+
+### Native app
+
+```sh
+nowbox sprites claude app
+```
+
+This opens a local native window backed by a webview.
+
+Use it when you want:
+
+- a desktop-style interface
+- a local app window instead of a browser tab
+- the app view for the running session
+
+Note:
+
+- app mode requires CGO / webview support
+- if your build does not support it, use `cli` or `browser`
+
+### MCP
+
+```sh
+nowbox sprites claude mcp
+```
+
+This starts a local MCP server for the running sandboxed agent.
+
+That means another agent or tool can talk to the session through MCP instead of you manually driving the terminal.
+
+This is the bridge for p2p-ish agent-to-agent workflows:
+
+- you start the sandbox once
+- nowbox exposes it locally over MCP
+- another tool connects to that MCP endpoint
+
+## Two Concrete Usage Patterns
+
+### 1. The simplest possible path
+
+Use the demo launcher:
+
+```sh
+curl -fsSL nowbox.lol/demo.now | sh
+```
+
+This is a saved template using our **Sprites** instance and **Claude Code**.
+
+Its job is to make the first-run experience dead simple.
+
+### 2. A custom path on your own host
+
+Example:
+
+```sh
+curl -fsSL nowbox.lol | sh -s -- daytona codex
+```
+
+That means:
+
+- use Daytona as the sandbox host
+- use Codex as the agent
+- boot the environment
+- connect immediately
+
+That is the normal nowbox workflow.
+
+## What `nowbox.lol` Actually Does
+
+`nowbox.lol` is intentionally small.
+
+It mainly hosts:
+
+- the bootstrap installer script
+- the `demo.now` launcher
+- the landing page
+
+That is by design.
+
+The long-term point of nowbox is not to keep routing everything through a big middle layer. It is to bootstrap quickly, then let your machine talk to the sandbox as directly as possible.
+
+If you want to inspect what is being run, you can audit:
+
+- [`landing/static/bootstrap.sh`](/Users/k/Projects/nowbox/landing/static/bootstrap.sh)
+- [`landing/static/demo.now`](/Users/k/Projects/nowbox/landing/static/demo.now)
+
+## Security And Trust Notes
+
+There are two very different trust models here.
+
+### Demo mode
+
+```sh
+curl -fsSL nowbox.lol/demo.now | sh
+```
+
+This is convenience-first.
+
+- it uses the nowbox demo instance
+- it includes demo access in the launcher
+- it is for understanding the flow, not for sensitive work
+
+### Your own setup
+
+```sh
+curl -fsSL nowbox.lol | sh -s -- <host> <agent>
+```
+
+This is the real path for normal usage.
+
+You bring your own host account and credentials, and nowbox helps you launch and connect.
+
+Also note:
+
+- `.now` files contain reusable launch material, so handle them carefully
+- the website only hosts the startup assets
+- the product is currently optimized for speed and simplicity over heavy managed infrastructure
+
+## Current Status
+
+nowbox is still early.
+
+The strongest path today is the fast bootstrap flow around a small set of host and agent combinations. The bigger vision is wider than what the current repo has fully proven.
+
+The repo currently includes host support work for providers like:
+
+- `sprites`
+- `vercel`
+- `daytona`
+- `runloop`
+- `blaxel`
+- `docker`
+- `podman`
+
+And agent launch manifests for:
 
 - `claude`
 - `codex`
@@ -108,75 +427,27 @@ The repo currently ships manifests for:
 - `openclaw`
 - `opencode`
 
-Agent support here means nowbox knows how to run the setup commands. It does **not** mean every agent/host combination has been validated end-to-end.
+Support in the repo means nowbox knows how to launch those combinations. It does not mean every host/agent pairing has been validated equally.
 
-## How It Works
+## What Is Coming
 
-1. nowbox loads a host manifest and an agent manifest from GitHub or local cache.
-2. The selected adapter creates the sandbox through the provider API.
-3. nowbox connects to the sandbox stream.
-4. Agent setup commands are sent into the sandbox.
-5. You interact through the CLI terminal or the browser terminal.
-6. On disconnect, nowbox destroys the sandbox and stores recovery metadata if cleanup needs to be retried.
+The direction from here is broader than the current repo.
 
-## Why This Is Interesting
+Coming soon:
 
-The strongest part of the project is the product shape:
+- fully managed and hosted keys
+- hosted nowbox sessions
+- richer session reuse
+- better sharing flows
+- more cloud-managed workflows
 
-- one install command
-- one CLI
-- one manifest format
-- many possible hosts
-- many possible agents
+The idea is:
 
-That is a good abstraction boundary. Most competing products are either:
+- start with direct, fast, local-to-sandbox usage
+- keep the bootstrap extremely light
+- add richer hosted workflows when they are actually useful
 
-- a sandbox provider with their own SDK and runtime model, or
-- a single agent with an opinionated runtime
-
-nowbox sits one layer above that and aims to unify them.
-
-## Comparison
-
-These are the closest reference points for positioning nowbox today:
-
-| Project | What it is | Where nowbox is stronger | Where nowbox is weaker |
-| --- | --- | --- | --- |
-| [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox/reference/readme) | Hosted ephemeral sandbox product | More provider-agnostic vision | Far less mature runtime and docs |
-| [E2B](https://e2b.dev/docs) | SDK/platform for isolated agent sandboxes | Simpler CLI-first UX concept | E2B is much more complete and battle-tested |
-| [Daytona](https://www.daytona.io/) | Dev environment/sandbox platform | Lighter abstraction layer across hosts | Daytona has a stronger platform and operational story |
-| [OpenHands](https://github.com/All-Hands-AI/OpenHands) | Full autonomous coding agent system | Cleaner "bring your own host + bring your own agent" framing | OpenHands is far more complete as an end-user agent product |
-| [Goose](https://github.com/block/goose) | Agent/CLI product | nowbox focuses on runtime portability, not just the agent | Goose has much stronger agent polish, docs, and ecosystem traction |
-
-The benchmark takeaway:
-
-- The idea is strong.
-- The current implementation is still much earlier than the best-known projects in this space.
-- The clearest differentiator is "unified launcher for many hosts and many agents."
-
-## README-Level Risks To Fix Before Pushing
-
-These were the main documentation problems in the previous version of this README:
-
-- It implied a broader level of host support than the code currently provides.
-- It showed examples like `mcp` as if they were usable.
-- It mixed implemented features with placeholder architecture.
-- It undersold the fact that many manifests are speculative and adapter-dependent.
-
-Those are now corrected here.
-
-## Manifest model
-
-Manifest resolution currently works like this:
-
-1. local manifest path
-2. cached manifest in `~/.nowbox`
-3. fetch from the `Atro-Tech/nowbox` GitHub repo
-4. fetch from an explicit URL
-
-That gives nowbox a useful distribution model, but it also means manifests are part of the runtime trust boundary. The CLI is not purely offline unless the needed manifests are already cached locally.
-
-## Developing
+## Build From Source
 
 ### Go CLI
 
@@ -186,8 +457,6 @@ go build .
 go test ./...
 ```
 
-Use the Go version pinned in [`nowbox/go.mod`](./nowbox/go.mod).
-
 ### Landing site
 
 ```sh
@@ -196,25 +465,14 @@ npm install
 npm run dev
 ```
 
-For Vercel deployment, this repo is configured to use `@sveltejs/adapter-vercel`.
-
 ## Project Structure
 
 | Directory | Purpose |
 | --- | --- |
-| `nowbox/` | Go CLI/runtime |
-| `landing/` | SvelteKit landing site |
-
-## Contributing
-
-The highest-leverage contributions right now are:
-
-- turning experimental hosts into validated hosts
-- replacing placeholder manifests with real adapters
-- adding end-to-end tests around create/connect/destroy flows
-- tightening provider-specific docs and setup instructions
+| `nowbox/` | Go CLI and runtime |
+| `landing/` | landing site and bootstrap assets |
 
 ## Links
 
 - [Website](https://nowbox.lol)
-- [GitHub repo](https://github.com/Atro-Tech/nowbox)
+- [GitHub Releases](https://github.com/Atro-Tech/nowbox/releases)
