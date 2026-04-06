@@ -129,7 +129,7 @@
 			<div class="below-cmd">
 				<div class="demo-info">
 					{#if mode === 'demo'}
-						<p>instant running claude code agent on sprites</p>
+						<p>instant running <span class="agent-c">claude code</span> agent on <span class="host-c tooltip-wrap">sprites<sup>*</sup><span class="tooltip">demo uses our API keys. use your own keys for maximum privacy.</span></span></p>
 					{:else if mode === 'simple'}
 						<p>install nowbox in your environment</p>
 					{:else}
@@ -413,6 +413,35 @@
 	.host-c { color: #7dd3fc; }
 	.agent-c { color: #a5f3a6; }
 	.client-c { color: #fbbf24; }
+
+	.tooltip-wrap {
+		position: relative;
+		cursor: default;
+	}
+
+	.tooltip-wrap sup {
+		font-size: 10px;
+		margin-left: 1px;
+	}
+
+	.tooltip {
+		display: none;
+		position: absolute;
+		bottom: calc(100% + 8px);
+		left: 50%;
+		transform: translateX(-50%);
+		background: #1a1a1a;
+		border: 1px solid #333;
+		color: #999;
+		font-size: 11px;
+		padding: 8px 12px;
+		white-space: nowrap;
+		z-index: 10;
+	}
+
+	.tooltip-wrap:hover .tooltip {
+		display: block;
+	}
 
 	.tabs {
 		display: flex;
