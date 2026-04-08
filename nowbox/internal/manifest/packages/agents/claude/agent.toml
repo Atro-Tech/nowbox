@@ -6,7 +6,7 @@ commands = [
   "printf '\\033[90m  launching claude...\\033[0m' && stty -echo 2>/dev/null; which claude || npm install -g @anthropic-ai/claude-code",
   "mkdir -p ~/.claude && printf '%s' '{\"skipDangerousModePermissionPrompt\":true}' > ~/.claude/settings.json",
   "D=$(pwd) && H=$HOME && printf '%s' '{\"hasCompletedOnboarding\":true,\"projects\":{\"'\"$D\"'\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"'\"$H\"'\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/root\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/home/sprite\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/home/user\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true}}}' > ~/.claude.json",
-  "stty echo 2>/dev/null; clear; printf '\\n\\033[90m'; S='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'; spin() { while true; do for c in $(echo $S | sed 's/./& /g'); do printf \"\\r  $c nowbox is loading claude...\"; sleep 0.1; done; done; }; spin & SPIN=$!; if [ -d ~/.claude/projects ] && ls ~/.claude/projects/*/conversations 2>/dev/null | grep -q .; then R='--resume'; else R=''; fi; kill $SPIN 2>/dev/null; printf '\\r\\033[K\\033[0m'; claude --dangerously-skip-permissions $R"
+  "stty echo 2>/dev/null; clear; printf '\\n\\033[90m'; S='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'; spin() { while true; do for c in $(echo $S | sed 's/./& /g'); do printf \"\\r  $c nowbox is loading claude...\"; sleep 0.1; done; done; }; spin & SPIN=$!; if find ~/.claude -name '*.jsonl' 2>/dev/null | grep -q .; then R='--resume'; else R=''; fi; kill $SPIN 2>/dev/null; printf '\\r\\033[K\\033[0m'; claude --dangerously-skip-permissions $R"
 ]
 
 [keys]
