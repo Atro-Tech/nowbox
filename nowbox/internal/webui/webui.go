@@ -188,13 +188,11 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *Se
 		defer mdnsServer.Shutdown()
 	}
 
-	var url string
-	if mdnsErr == nil {
-		url = fmt.Sprintf("http://%s.local:%d", sessionName, port)
-	} else {
-		url = fmt.Sprintf("http://localhost:%d", port)
-	}
+	url := fmt.Sprintf("http://localhost:%d", port)
 	fmt.Fprintf(os.Stderr, "  web: %s\n", url)
+	if mdnsErr == nil {
+		fmt.Fprintf(os.Stderr, "  lan: http://%s.local:%d\n", sessionName, port)
+	}
 
 	go http.Serve(listener, mux)
 	defer listener.Close()
