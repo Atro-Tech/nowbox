@@ -54,10 +54,11 @@ var upgrader = websocket.Upgrader{
 
 // SessionInfo holds the data needed to save a .now file from the web UI.
 type SessionInfo struct {
-	HostName   string
-	AgentName  string
-	Vars       map[string]string
-	InstanceID string
+	HostName      string
+	AgentName     string
+	Vars          map[string]string
+	InstanceID    string
+	SetupCommands []string // sent after first browser resize
 }
 
 // Serve starts a local web server, opens the browser, and blocks until
@@ -156,6 +157,7 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, version 
 		}()
 
 		// Browser → remote
+		setupSent := false
 		for {
 			mt, data, err := conn.ReadMessage()
 			if err != nil {
@@ -173,6 +175,13 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, version 
 					if err := stream.Resize(msg.Cols, msg.Rows); err != nil {
 						finish()
 						return
+					}
+					// Send setup commands after first resize so terminal is properly sized
+					if !setupSent && info != nil && len(info.SetupCommands) > 0 {
+						setupSent = true
+						for _, cmd := range info.SetupCommands {
+							stream.Write([]byte(cmd + "\n"))
+						}
 					}
 					continue
 				}

@@ -302,8 +302,8 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 		os.Exit(130)
 	}()
 
-	// Send agent setup commands
-	if len(agent.Setup.Commands) > 0 {
+	// Send agent setup commands (deferred to after first resize for browser mode)
+	if clientMode != "browser" && len(agent.Setup.Commands) > 0 {
 		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
 		for _, cmd := range agent.Setup.Commands {
 			if _, err := sess.Stream.Write([]byte(cmd + "\n")); err != nil {
@@ -345,10 +345,11 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 			}
 		case "browser":
 			err = webui.Serve(sess.Stream, displayName, hostAgent, Version, &webui.SessionInfo{
-				HostName:   host.Name,
-				AgentName:  agent.Name,
-				Vars:       sess.Vars,
-				InstanceID: sess.InstanceID,
+				HostName:      host.Name,
+				AgentName:     agent.Name,
+				Vars:          sess.Vars,
+				InstanceID:    sess.InstanceID,
+				SetupCommands: agent.Setup.Commands,
 			})
 		case "app":
 			err = appui.Serve(sess.Stream, displayName, hostAgent, &appui.SessionInfo{
