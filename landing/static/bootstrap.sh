@@ -215,10 +215,8 @@ ICONSVG
   exit 0
 fi
 
-# ── Normal mode: download to cache and run ──
-if [ -x "$BINARY" ]; then
-  exec "$BINARY" "$@" </dev/tty
-fi
+# ── Normal mode: always download fresh ──
+rm -rf "$CACHE_DIR"
 
 TMP=$(download_binary)
 mv "$TMP" "$BINARY"
