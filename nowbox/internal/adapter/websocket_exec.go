@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/nowbox/nowbox/internal/manifest"
@@ -81,12 +83,20 @@ func (a *WebSocketExec) Connect(instanceID string, vars map[string]string) (Stre
 		h.Set(k, v)
 	}
 
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), h)
-	if err != nil {
-		return nil, fmt.Errorf("websocket connect failed: %w", err)
+	// Retry connection — warm sprites need time to wake up
+	var conn *websocket.Conn
+	var dialErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		conn, _, dialErr = websocket.DefaultDialer.Dial(u.String(), h)
+		if dialErr == nil {
+			return newWSStream(conn), nil
+		}
+		if attempt < 4 {
+			fmt.Fprintf(os.Stderr, "  waiting for sandbox to wake up...\n")
+			time.Sleep(2 * time.Second)
+		}
 	}
-
-	return newWSStream(conn), nil
+	return nil, fmt.Errorf("websocket connect failed: %w", dialErr)
 }
 
 func (a *WebSocketExec) Destroy(instanceID string, vars map[string]string) error {
