@@ -139,7 +139,7 @@ func resolve(nameOrPath string, kind string, filename string) ([]byte, error) {
 	if known {
 		manifestURL := fmt.Sprintf("%s/%s/%s/%s", repoBase, kind, nameOrPath, filename)
 		sigURL := manifestURL + ".sig"
-		data, err := fetchAndVerify(manifestURL, sigURL, cachePath)
+		data, err := fetchAndVerify(nameOrPath, manifestURL, sigURL, cachePath)
 		if err != nil {
 			return nil, fmt.Errorf("fetching %s manifest for %q: %w", kind[:len(kind)-1], nameOrPath, err)
 		}
@@ -149,7 +149,7 @@ func resolve(nameOrPath string, kind string, filename string) ([]byte, error) {
 	// 4. URL → fetch + verify
 	if strings.HasPrefix(nameOrPath, "http://") || strings.HasPrefix(nameOrPath, "https://") {
 		sigURL := nameOrPath + ".sig"
-		data, err := fetchAndVerify(nameOrPath, sigURL, cachePath)
+		data, err := fetchAndVerify(nameOrPath, nameOrPath, sigURL, cachePath)
 		if err != nil {
 			return nil, fmt.Errorf("fetching manifest from %s: %w", nameOrPath, err)
 		}
@@ -160,8 +160,8 @@ func resolve(nameOrPath string, kind string, filename string) ([]byte, error) {
 	return nil, fmt.Errorf("unknown %s: %q", kind[:len(kind)-1], nameOrPath)
 }
 
-func fetchAndVerify(manifestURL string, sigURL string, cachePath string) ([]byte, error) {
-	fmt.Fprintf(os.Stderr, "  fetching manifest...\n")
+func fetchAndVerify(name string, manifestURL string, sigURL string, cachePath string) ([]byte, error) {
+	fmt.Fprintf(os.Stderr, "  loading %s...\n", name)
 
 	// Fetch manifest
 	resp, err := http.Get(manifestURL)
@@ -195,8 +195,6 @@ func fetchAndVerify(manifestURL string, sigURL string, cachePath string) ([]byte
 	if !ed25519.Verify(signingPubKey, data, sig) {
 		return nil, fmt.Errorf("manifest signature verification FAILED — manifest may be tampered")
 	}
-	fmt.Fprintf(os.Stderr, "  verified ✓\n")
-
 	// Cache (only after verification)
 	dir := filepath.Dir(cachePath)
 	os.MkdirAll(dir, 0700)
