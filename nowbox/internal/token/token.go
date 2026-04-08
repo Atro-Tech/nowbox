@@ -34,9 +34,10 @@ func deriveKey() ([]byte, error) {
 
 // Payload is the decrypted content of a .now token.
 type Payload struct {
-	Host  string            `json:"host"`
-	Agent string            `json:"agent"`
-	Vars  map[string]string `json:"vars"`
+	Host       string            `json:"host"`
+	Agent      string            `json:"agent"`
+	Vars       map[string]string `json:"vars"`
+	InstanceID string            `json:"instance_id,omitempty"`
 }
 
 // Seal encrypts a Payload into a base64 string using AES-256-GCM.

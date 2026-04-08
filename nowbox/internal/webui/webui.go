@@ -54,9 +54,10 @@ var upgrader = websocket.Upgrader{
 
 // SessionInfo holds the data needed to save a .now file from the web UI.
 type SessionInfo struct {
-	HostName  string
-	AgentName string
-	Vars      map[string]string
+	HostName   string
+	AgentName  string
+	Vars       map[string]string
+	InstanceID string
 }
 
 // Serve starts a local web server, opens the browser, and blocks until
@@ -106,9 +107,10 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *Se
 		}
 
 		sealed, err := token.Seal(&token.Payload{
-			Host:  info.HostName,
-			Agent: info.AgentName,
-			Vars:  vars,
+			Host:       info.HostName,
+			Agent:      info.AgentName,
+			Vars:       vars,
+			InstanceID: info.InstanceID,
 		})
 		if err != nil {
 			http.Error(w, "failed to encrypt session", http.StatusInternalServerError)

@@ -52,6 +52,41 @@ func ClearRecovery() {
 	os.Remove(recoveryPath)
 }
 
+// Reconnect connects to an existing sandbox by instance ID. If the connection
+// fails (sandbox expired/destroyed), returns an error so the caller can fall
+// back to creating a new one.
+func Reconnect(host *manifest.HostManifest, agent *manifest.AgentManifest, instanceID string, vars map[string]string) (*Session, error) {
+	sessionName := vars["SESSION_NAME"]
+	if sessionName == "" {
+		sessionName = names.Generate()
+		vars["SESSION_NAME"] = sessionName
+	}
+	vars["INSTANCE_ID"] = instanceID
+
+	a, err := newAdapter(host)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(os.Stderr, "  reconnecting to %s...\n", instanceID)
+	stream, err := a.Connect(instanceID, vars)
+	if err != nil {
+		return nil, fmt.Errorf("reconnecting: %w", err)
+	}
+
+	writeRecovery(sessionName, instanceID, host)
+
+	return &Session{
+		Name:       sessionName,
+		InstanceID: instanceID,
+		Host:       host,
+		Agent:      agent,
+		Adapter:    a,
+		Stream:     stream,
+		Vars:       vars,
+	}, nil
+}
+
 // New creates a new session: provisions the sandbox and connects.
 func New(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[string]string) (*Session, error) {
 	sessionName := names.Generate()

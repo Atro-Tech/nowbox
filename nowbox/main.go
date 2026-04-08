@@ -90,6 +90,7 @@ func main() {
 
 	args := flag.Args()
 	createMode := false
+	var existingInstanceID string
 
 	// Check for "create" subcommand: nowbox create sprites claude
 	if len(args) > 0 && args[0] == "create" {
@@ -99,14 +100,14 @@ func main() {
 
 	// Check if first arg is a .now file or NOWBOX_TOKEN env var
 	if tok := os.Getenv("NOWBOX_TOKEN"); tok != "" {
-		loadToken(tok, &hostName, &agentName)
+		existingInstanceID = loadToken(tok, &hostName, &agentName)
 	} else if len(args) > 0 && strings.HasSuffix(args[0], ".now") {
 		data, err := os.ReadFile(args[0])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "nowbox: %v\n", err)
 			os.Exit(1)
 		}
-		loadToken(strings.TrimSpace(string(data)), &hostName, &agentName)
+		existingInstanceID = loadToken(strings.TrimSpace(string(data)), &hostName, &agentName)
 		args = args[1:]
 	}
 
@@ -190,8 +191,17 @@ func main() {
 		return
 	}
 
-	// Create session (provisions sandbox + connects)
-	sess, err := session.New(host, agent, vars)
+	// Connect to existing sandbox, or create a new one
+	var sess *session.Session
+	if existingInstanceID != "" {
+		sess, err = session.Reconnect(host, agent, existingInstanceID, vars)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "  reconnect failed, creating new sandbox...\n")
+			sess, err = session.New(host, agent, vars)
+		}
+	} else {
+		sess, err = session.New(host, agent, vars)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "nowbox: %v\n", err)
 		os.Exit(1)
@@ -234,9 +244,10 @@ func main() {
 			keyVars[k] = v
 		}
 		sealed, err := token.Seal(&token.Payload{
-			Host:  host.Name,
-			Agent: agent.Name,
-			Vars:  keyVars,
+			Host:       host.Name,
+			Agent:      agent.Name,
+			Vars:       keyVars,
+			InstanceID: sess.InstanceID,
 		})
 		if err != nil {
 			return err
@@ -268,15 +279,17 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 			}
 		case "browser":
 			err = webui.Serve(sess.Stream, sess.Name, hostAgent, &webui.SessionInfo{
-				HostName:  host.Name,
-				AgentName: agent.Name,
-				Vars:      sess.Vars,
+				HostName:   host.Name,
+				AgentName:  agent.Name,
+				Vars:       sess.Vars,
+				InstanceID: sess.InstanceID,
 			})
 		case "app":
 			err = appui.Serve(sess.Stream, sess.Name, hostAgent, &appui.SessionInfo{
-				HostName:  host.Name,
-				AgentName: agent.Name,
-				Vars:      sess.Vars,
+				HostName:   host.Name,
+				AgentName:  agent.Name,
+				Vars:       sess.Vars,
+				InstanceID: sess.InstanceID,
 			})
 		case "mcp":
 			err = mcpserver.Serve(host, sess.Stream, sess.InstanceID, sess.Name, agent.Name, sess.Vars)
@@ -371,7 +384,7 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 	fmt.Fprintf(os.Stderr, "  run:     sh %s\n", filename)
 }
 
-func loadToken(tok string, hostName *string, agentName *string) {
+func loadToken(tok string, hostName *string, agentName *string) string {
 	p, err := token.Open(tok)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "nowbox: invalid token: %v\n", err)
@@ -387,6 +400,7 @@ func loadToken(tok string, hostName *string, agentName *string) {
 	for k, v := range p.Vars {
 		os.Setenv(k, v)
 	}
+	return p.InstanceID
 }
 
 // pick renders an interactive arrow-key picker on /dev/tty.
