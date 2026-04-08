@@ -22,6 +22,9 @@ import (
 	"golang.org/x/term"
 )
 
+// Version is set at build time via -ldflags.
+var Version = "dev"
+
 // ttyReader reads from /dev/tty so prompts work even when stdin is piped (curl | sh).
 var ttyReader *bufio.Reader
 
@@ -341,7 +344,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 				return
 			}
 		case "browser":
-			err = webui.Serve(sess.Stream, displayName, hostAgent, &webui.SessionInfo{
+			err = webui.Serve(sess.Stream, displayName, hostAgent, Version, &webui.SessionInfo{
 				HostName:   host.Name,
 				AgentName:  agent.Name,
 				Vars:       sess.Vars,

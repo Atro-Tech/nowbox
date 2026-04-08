@@ -62,7 +62,7 @@ type SessionInfo struct {
 
 // Serve starts a local web server, opens the browser, and blocks until
 // the session ends.
-func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *SessionInfo) error {
+func Serve(stream adapter.Stream, sessionName string, hostAgent string, version string, info *SessionInfo) error {
 	// Pick a random port
 	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	if err != nil {
@@ -81,6 +81,7 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *Se
 	html = strings.ReplaceAll(html, "{{SESSION}}", sessionName)
 	html = strings.ReplaceAll(html, "{{HOST_AGENT}}", hostAgent)
 	html = strings.ReplaceAll(html, "{{WS_PATH}}", wsPath)
+	html = strings.ReplaceAll(html, "{{VERSION}}", version)
 
 	mux := http.NewServeMux()
 
