@@ -78,7 +78,10 @@ ws.onmessage = function(e) {
 };
 
 ws.onclose = function() {
-  term.write('\r\n\x1b[90m[disconnected]\x1b[0m\r\n');
+  window.close();
+  // window.close() only works if the page was opened by script (window.open).
+  // For tabs opened via OS "open" command, show disconnected message as fallback.
+  term.write('\r\n\x1b[90m[disconnected — you can close this tab]\x1b[0m\r\n');
   document.getElementById('quit').textContent = 'closed';
 };
 
