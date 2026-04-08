@@ -217,6 +217,7 @@ fi
 
 # ── Normal mode: always download fresh ──
 rm -rf "$CACHE_DIR"
+rm -rf "${HOME}/.nowbox"
 
 TMP=$(download_binary)
 mv "$TMP" "$BINARY"
