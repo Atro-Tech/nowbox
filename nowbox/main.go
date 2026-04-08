@@ -243,15 +243,19 @@ func main() {
 		if filename == "" {
 			filename = sess.Name + ".now"
 		}
+		cf := ""
+		if clientMode != "" && clientMode != "cli" {
+			cf = fmt.Sprintf(" -client %s", clientMode)
+		}
 		script := fmt.Sprintf(`#!/bin/sh
 # nowbox session — %s + %s
 export NOWBOX_TOKEN="%s"
 export NOWBOX_FILE="$0"
 BIN="${NOWBOX_CACHE_DIR:-$HOME/.cache/nowbox}/nowbox"
-if [ -x "$BIN" ]; then exec "$BIN" "$@" </dev/tty; fi
-if command -v nowbox >/dev/null 2>&1; then exec nowbox "$@" </dev/tty; fi
-curl -fsSL nowbox.lol | sh -s -- "$@"
-`, host.Name, agent.Name, sealed)
+if [ -x "$BIN" ]; then exec "$BIN"%s "$@" </dev/tty; fi
+if command -v nowbox >/dev/null 2>&1; then exec nowbox%s "$@" </dev/tty; fi
+curl -fsSL nowbox.lol | sh -s --%s "$@"
+`, host.Name, agent.Name, sealed, cf, cf, cf)
 		return os.WriteFile(filename, []byte(script), 0755)
 	}
 	savePath := nowFilePath
