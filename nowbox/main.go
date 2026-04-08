@@ -289,8 +289,9 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 		<-sigCh
 		if fromNowFile {
 			saveFunc()
+			sess.Disconnect()
 			session.ClearRecovery()
-			fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
+			fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox will sleep when idle\n")
 		} else {
 			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, destroying %s...\n", displayName)
 			sess.Destroy()
@@ -331,8 +332,9 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 				if saveErr := saveFunc(); saveErr != nil {
 					fmt.Fprintf(os.Stderr, "\n  warning: could not save: %v\n", saveErr)
 				}
+				sess.Disconnect()
 				session.ClearRecovery()
-				fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
+				fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox will sleep when idle\n")
 				if existingInstanceID != sess.InstanceID {
 					fmt.Fprintf(os.Stderr, "  saved: %s\n", savePath)
 				}
@@ -367,8 +369,9 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 		if saveErr := saveFunc(); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "\n  warning: could not save: %v\n", saveErr)
 		}
+		sess.Disconnect()
 		session.ClearRecovery()
-		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
+		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox will sleep when idle\n")
 		if existingInstanceID != sess.InstanceID {
 			fmt.Fprintf(os.Stderr, "  saved: %s\n", savePath)
 		}

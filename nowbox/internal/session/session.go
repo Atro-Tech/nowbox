@@ -131,6 +131,14 @@ func New(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[st
 	}, nil
 }
 
+// Disconnect closes the stream without destroying the sandbox.
+// This lets the sandbox go idle and eventually sleep.
+func (s *Session) Disconnect() {
+	if s.Stream != nil {
+		s.Stream.Close()
+	}
+}
+
 // Destroy tears down the sandbox and cleans up.
 func (s *Session) Destroy() error {
 	if s.Stream != nil {

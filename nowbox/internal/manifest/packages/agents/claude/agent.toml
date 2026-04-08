@@ -4,8 +4,8 @@ description = "Claude Code (Anthropic)"
 [setup]
 commands = [
   "which claude || npm install -g @anthropic-ai/claude-code",
-  "mkdir -p ~/.claude && printf '%s' '{\"bypassPermissionsModeAccepted\":true,\"skipDangerousModePermissionPrompt\":true}' > ~/.claude/settings.json",
-  "printf '%s' '{\"hasCompletedOnboarding\":true,\"projects\":{\"'$(pwd)'\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true,\"allowedTools\":[\"*\"]},\"/root\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true,\"allowedTools\":[\"*\"]},\"/home/sprite\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true,\"allowedTools\":[\"*\"]},\"/home/user\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true,\"allowedTools\":[\"*\"]}}}' > ~/.claude.json",
+  "mkdir -p ~/.claude && printf '%s' '{\"skipDangerousModePermissionPrompt\":true}' > ~/.claude/settings.json",
+  "D=$(pwd) && H=$HOME && printf '%s' '{\"hasCompletedOnboarding\":true,\"projects\":{\"'\"$D\"'\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"'\"$H\"'\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/root\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/home/sprite\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/home/user\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true}}}' > ~/.claude.json",
   "claude --dangerously-skip-permissions"
 ]
 
