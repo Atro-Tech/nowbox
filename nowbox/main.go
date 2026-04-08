@@ -292,6 +292,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 		<-sigCh
 		if fromNowFile {
 			saveFunc()
+			session.ClearRecovery()
 			fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
 		} else {
 			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, destroying %s...\n", displayName)
@@ -333,6 +334,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 				if saveErr := saveFunc(); saveErr != nil {
 					fmt.Fprintf(os.Stderr, "\n  warning: could not save: %v\n", saveErr)
 				}
+				session.ClearRecovery()
 				fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
 				if existingInstanceID != sess.InstanceID {
 					fmt.Fprintf(os.Stderr, "  saved: %s\n", savePath)
@@ -368,6 +370,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 		if saveErr := saveFunc(); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "\n  warning: could not save: %v\n", saveErr)
 		}
+		session.ClearRecovery()
 		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
 		if existingInstanceID != sess.InstanceID {
 			fmt.Fprintf(os.Stderr, "  saved: %s\n", savePath)
