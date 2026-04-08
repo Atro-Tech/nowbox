@@ -138,8 +138,8 @@ func main() {
 
 	initTTY()
 
-	// Check for orphan from previous crash
-	if orphan := session.CheckOrphan(); orphan != nil {
+	// Check for orphan from previous crash — skip if we're reconnecting to it
+	if orphan := session.CheckOrphan(); orphan != nil && orphan.InstanceID != existingInstanceID {
 		fmt.Fprintf(os.Stderr, "nowbox: orphan sandbox found: %s (%s on %s)\n",
 			orphan.SessionName, orphan.InstanceID, orphan.Provider)
 		answer := prompt("nowbox: destroy it? [y/N] ")
