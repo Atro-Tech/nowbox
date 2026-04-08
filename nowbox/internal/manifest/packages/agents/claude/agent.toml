@@ -3,10 +3,10 @@ description = "Claude Code (Anthropic)"
 
 [setup]
 commands = [
-  "which claude || npm install -g @anthropic-ai/claude-code",
+  "stty -echo 2>/dev/null; which claude || npm install -g @anthropic-ai/claude-code",
   "mkdir -p ~/.claude && printf '%s' '{\"skipDangerousModePermissionPrompt\":true}' > ~/.claude/settings.json",
   "D=$(pwd) && H=$HOME && printf '%s' '{\"hasCompletedOnboarding\":true,\"projects\":{\"'\"$D\"'\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"'\"$H\"'\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/root\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/home/sprite\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/home/user\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true}}}' > ~/.claude.json",
-  "claude --dangerously-skip-permissions"
+  "stty echo 2>/dev/null; clear; claude --dangerously-skip-permissions"
 ]
 
 [keys]
