@@ -91,6 +91,7 @@ func main() {
 	args := flag.Args()
 	createMode := false
 	var existingInstanceID string
+	var nowFilePath string
 	fromNowFile := false
 
 	// Check for "create" subcommand: nowbox create sprites claude
@@ -110,6 +111,7 @@ func main() {
 			os.Exit(1)
 		}
 		existingInstanceID = loadToken(strings.TrimSpace(string(data)), &hostName, &agentName)
+		nowFilePath = args[0]
 		fromNowFile = true
 		args = args[1:]
 	}
@@ -231,7 +233,10 @@ func main() {
 		if err != nil {
 			return err
 		}
-		filename := sess.Name + ".now"
+		filename := nowFilePath
+		if filename == "" {
+			filename = sess.Name + ".now"
+		}
 		script := fmt.Sprintf(`#!/bin/sh
 # nowbox session — %s + %s
 export NOWBOX_TOKEN="%s"
@@ -242,6 +247,10 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 `, host.Name, agent.Name, sealed)
 		return os.WriteFile(filename, []byte(script), 0755)
 	}
+	savePath := nowFilePath
+	if savePath == "" {
+		savePath = sess.Name + ".now"
+	}
 
 	// Set up signal handler — smart default based on session origin
 	sigCh := make(chan os.Signal, 1)
@@ -251,7 +260,7 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 		if fromNowFile {
 			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, saving session...\n")
 			saveFunc()
-			fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s.now\n", sess.Name)
+			fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s\n", savePath)
 		} else {
 			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, destroying %s...\n", sess.Name)
 			sess.Destroy()
@@ -293,9 +302,9 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 				if saveErr := saveFunc(); saveErr != nil {
 					fmt.Fprintf(os.Stderr, "  warning: could not save: %v\n", saveErr)
 				} else {
-					fmt.Fprintf(os.Stderr, "  saved: %s.now\n", sess.Name)
+					fmt.Fprintf(os.Stderr, "  saved: %s\n", savePath)
 				}
-				fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s.now\n", sess.Name)
+				fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s\n", savePath)
 				return
 			}
 		case "browser":
@@ -328,9 +337,9 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 		if saveErr := saveFunc(); saveErr != nil {
 			fmt.Fprintf(os.Stderr, "  warning: could not save: %v\n", saveErr)
 		} else {
-			fmt.Fprintf(os.Stderr, "  saved: %s.now\n", sess.Name)
+			fmt.Fprintf(os.Stderr, "  saved: %s\n", savePath)
 		}
-		fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s.now\n", sess.Name)
+		fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s\n", savePath)
 	} else {
 		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected, destroying %s...\n", sess.Name)
 		sess.Destroy()
