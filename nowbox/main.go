@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -204,6 +205,14 @@ func main() {
 	if createMode {
 		createNowFile(host, agent, vars, clientMode)
 		return
+	}
+
+	// Derive session name from .now filename if available
+	if nowFilePath != "" {
+		base := strings.TrimSuffix(filepath.Base(nowFilePath), ".now")
+		if base != "" {
+			vars["SESSION_NAME"] = base
+		}
 	}
 
 	// Connect to existing sandbox, or create a new one
