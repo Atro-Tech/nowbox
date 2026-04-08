@@ -6,7 +6,7 @@ commands = [
   "printf '\\033[90m  launching claude...\\033[0m' && stty -echo 2>/dev/null; which claude || npm install -g @anthropic-ai/claude-code",
   "mkdir -p ~/.claude && printf '%s' '{\"skipDangerousModePermissionPrompt\":true}' > ~/.claude/settings.json",
   "D=$(pwd) && H=$HOME && printf '%s' '{\"hasCompletedOnboarding\":true,\"projects\":{\"'\"$D\"'\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"'\"$H\"'\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/root\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/home/sprite\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true},\"/home/user\":{\"hasCompletedProjectOnboarding\":true,\"hasTrustDialogAccepted\":true}}}' > ~/.claude.json",
-  "stty echo 2>/dev/null; clear; claude --dangerously-skip-permissions --resume"
+  "stty echo 2>/dev/null; clear; if [ -d ~/.claude/projects ] && ls ~/.claude/projects/*/conversations 2>/dev/null | grep -q .; then claude --dangerously-skip-permissions --resume; else claude --dangerously-skip-permissions; fi"
 ]
 
 [keys]
