@@ -103,6 +103,7 @@ func main() {
 	// Check if first arg is a .now file or NOWBOX_TOKEN env var
 	if tok := os.Getenv("NOWBOX_TOKEN"); tok != "" {
 		existingInstanceID = loadToken(tok, &hostName, &agentName)
+		nowFilePath = os.Getenv("NOWBOX_FILE")
 		fromNowFile = true
 	} else if len(args) > 0 && strings.HasSuffix(args[0], ".now") {
 		data, err := os.ReadFile(args[0])
@@ -192,7 +193,7 @@ func main() {
 
 	// Create mode — provision sandbox, write .now file, don't connect
 	if createMode {
-		createNowFile(host, agent, vars)
+		createNowFile(host, agent, vars, clientMode)
 		return
 	}
 
@@ -240,6 +241,7 @@ func main() {
 		script := fmt.Sprintf(`#!/bin/sh
 # nowbox session — %s + %s
 export NOWBOX_TOKEN="%s"
+export NOWBOX_FILE="$0"
 BIN="${NOWBOX_CACHE_DIR:-$HOME/.cache/nowbox}/nowbox"
 if [ -x "$BIN" ]; then exec "$BIN" "$@" </dev/tty; fi
 if command -v nowbox >/dev/null 2>&1; then exec nowbox "$@" </dev/tty; fi
@@ -383,7 +385,7 @@ func resolveChoice(input string, options []string) string {
 	return choice
 }
 
-func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[string]string) {
+func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[string]string, clientMode string) {
 	// Filter vars to only include API keys
 	keyVars := make(map[string]string)
 	for k, v := range vars {
@@ -406,14 +408,20 @@ func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, v
 	sessionName := names.Generate()
 	filename := sessionName + ".now"
 
+	clientFlag := ""
+	if clientMode != "" && clientMode != "cli" {
+		clientFlag = fmt.Sprintf(" -client %s", clientMode)
+	}
+
 	script := fmt.Sprintf(`#!/bin/sh
 # nowbox session — %s + %s
 export NOWBOX_TOKEN="%s"
+export NOWBOX_FILE="$0"
 BIN="${NOWBOX_CACHE_DIR:-$HOME/.cache/nowbox}/nowbox"
-if [ -x "$BIN" ]; then exec "$BIN" "$@" </dev/tty; fi
-if command -v nowbox >/dev/null 2>&1; then exec nowbox "$@" </dev/tty; fi
-curl -fsSL nowbox.lol | sh -s -- "$@"
-`, host.Name, agent.Name, sealed)
+if [ -x "$BIN" ]; then exec "$BIN"%s "$@" </dev/tty; fi
+if command -v nowbox >/dev/null 2>&1; then exec nowbox%s "$@" </dev/tty; fi
+curl -fsSL nowbox.lol | sh -s --%s "$@"
+`, host.Name, agent.Name, sealed, clientFlag, clientFlag, clientFlag)
 
 	if err := os.WriteFile(filename, []byte(script), 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "nowbox: failed to write %s: %v\n", filename, err)
