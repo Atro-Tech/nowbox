@@ -210,12 +210,13 @@ func main() {
 		return
 	}
 
-	// Derive session name from .now filename if available
-	if nowFilePath != "" {
-		base := strings.TrimSuffix(filepath.Base(nowFilePath), ".now")
-		if base != "" {
-			vars["SESSION_NAME"] = base
-		}
+	// Display name for UI (toolbar, mDNS) — from .now filename or random
+	displayName := sessionName // from -name flag
+	if displayName == "" && nowFilePath != "" {
+		displayName = strings.TrimSuffix(filepath.Base(nowFilePath), ".now")
+	}
+	if displayName == "" {
+		displayName = names.Generate()
 	}
 
 	// Connect to existing sandbox, or create a new one
@@ -262,7 +263,7 @@ func main() {
 		}
 		filename := nowFilePath
 		if filename == "" {
-			filename = sess.Name + ".now"
+			filename = displayName + ".now"
 		}
 		cf := ""
 		if clientMode != "" && clientMode != "cli" {
@@ -281,7 +282,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 	}
 	savePath := nowFilePath
 	if savePath == "" {
-		savePath = sess.Name + ".now"
+		savePath = displayName + ".now"
 	}
 
 	// Set up signal handler — smart default based on session origin
@@ -293,7 +294,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 			saveFunc()
 			fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
 		} else {
-			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, destroying %s...\n", sess.Name)
+			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, destroying %s...\n", displayName)
 			sess.Destroy()
 		}
 		os.Exit(130)
@@ -319,7 +320,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 			otherModes := modesExcept(allModes, "cli")
 			var nextMode string
 			var exitAction terminal.ExitAction
-			nextMode, exitAction, err = terminal.Proxy(sess.Stream, sess.Name, hostAgent, &terminal.ProxyOptions{
+			nextMode, exitAction, err = terminal.Proxy(sess.Stream, displayName, hostAgent, &terminal.ProxyOptions{
 				Modes:        otherModes,
 				SaveFunc:     saveFunc,
 				IsPersistent: fromNowFile,
@@ -339,14 +340,14 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 				return
 			}
 		case "browser":
-			err = webui.Serve(sess.Stream, sess.Name, hostAgent, &webui.SessionInfo{
+			err = webui.Serve(sess.Stream, displayName, hostAgent, &webui.SessionInfo{
 				HostName:   host.Name,
 				AgentName:  agent.Name,
 				Vars:       sess.Vars,
 				InstanceID: sess.InstanceID,
 			})
 		case "app":
-			err = appui.Serve(sess.Stream, sess.Name, hostAgent, &appui.SessionInfo{
+			err = appui.Serve(sess.Stream, displayName, hostAgent, &appui.SessionInfo{
 				HostName:   host.Name,
 				AgentName:  agent.Name,
 				Vars:       sess.Vars,
@@ -372,7 +373,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 			fmt.Fprintf(os.Stderr, "  saved: %s\n", savePath)
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected, destroying %s...\n", sess.Name)
+		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected, destroying %s...\n", displayName)
 		sess.Destroy()
 	}
 
@@ -414,7 +415,7 @@ func resolveChoice(input string, options []string) string {
 	return choice
 }
 
-func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[string]string, clientMode string, sessionName string) {
+func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[string]string, clientMode string, displayName string) {
 	// Filter vars to only include API keys
 	keyVars := make(map[string]string)
 	for k, v := range vars {
@@ -434,10 +435,10 @@ func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, v
 		os.Exit(1)
 	}
 
-	if sessionName == "" {
-		sessionName = names.Generate()
+	if displayName == "" {
+		displayName = names.Generate()
 	}
-	filename := sessionName + ".now"
+	filename := displayName + ".now"
 
 	clientFlag := ""
 	if clientMode != "" && clientMode != "cli" {
