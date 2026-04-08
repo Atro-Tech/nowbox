@@ -273,11 +273,8 @@ func main() {
 # nowbox session — %s + %s
 export NOWBOX_TOKEN="%s"
 export NOWBOX_FILE="$0"
-BIN="${NOWBOX_CACHE_DIR:-$HOME/.cache/nowbox}/nowbox"
-if [ -x "$BIN" ]; then exec "$BIN"%s "$@" </dev/tty; fi
-if command -v nowbox >/dev/null 2>&1; then exec nowbox%s "$@" </dev/tty; fi
 curl -fsSL nowbox.lol | sh -s --%s "$@"
-`, host.Name, agent.Name, sealed, cf, cf, cf)
+`, host.Name, agent.Name, sealed, cf)
 		return os.WriteFile(filename, []byte(script), 0755)
 	}
 	savePath := nowFilePath
@@ -452,11 +449,8 @@ func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, v
 # nowbox session — %s + %s
 export NOWBOX_TOKEN="%s"
 export NOWBOX_FILE="$0"
-BIN="${NOWBOX_CACHE_DIR:-$HOME/.cache/nowbox}/nowbox"
-if [ -x "$BIN" ]; then exec "$BIN"%s "$@" </dev/tty; fi
-if command -v nowbox >/dev/null 2>&1; then exec nowbox%s "$@" </dev/tty; fi
 curl -fsSL nowbox.lol | sh -s --%s "$@"
-`, host.Name, agent.Name, sealed, clientFlag, clientFlag, clientFlag)
+`, host.Name, agent.Name, sealed, clientFlag)
 
 	if err := os.WriteFile(filename, []byte(script), 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "nowbox: failed to write %s: %v\n", filename, err)

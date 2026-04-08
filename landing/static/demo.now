@@ -1,7 +1,5 @@
 #!/bin/sh
 # nowbox demo — sprites + claude (keys included)
 export NOWBOX_TOKEN="uM8jW5JLHPsE7RBm9TeSpPbxdrdmTkWU6kOVXZlp0XljqM4iFEoqdBg2kkkQ75d0Y/tDgnKMxAeRyT6sLnU9Q0CGgBNUcyD+3RiclhJoLgvtasZnZQP7YdioBJWISStMQZ073unvzg1btRSa37oylXHwnVmGsUlzPfwVjdfIYLkH7zXdOX1YsLejANXkbnGmfEbLNm1C/NzmHtAQILjb+hs6Rhwd3AcGrlIuNu5U6w016QYceU9Jz8bh3F3jfyspEBRQFT2GJrwDwWk="
-BIN="${NOWBOX_CACHE_DIR:-$HOME/.cache/nowbox}/nowbox"
-if [ -x "$BIN" ]; then exec "$BIN" "$@" </dev/tty; fi
-if command -v nowbox >/dev/null 2>&1; then exec nowbox "$@" </dev/tty; fi
+export NOWBOX_FILE="$0"
 curl -fsSL nowbox.lol | sh -s -- "$@"
