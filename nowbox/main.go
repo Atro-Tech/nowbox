@@ -91,6 +91,7 @@ func main() {
 	args := flag.Args()
 	createMode := false
 	var existingInstanceID string
+	fromNowFile := false
 
 	// Check for "create" subcommand: nowbox create sprites claude
 	if len(args) > 0 && args[0] == "create" {
@@ -101,6 +102,7 @@ func main() {
 	// Check if first arg is a .now file or NOWBOX_TOKEN env var
 	if tok := os.Getenv("NOWBOX_TOKEN"); tok != "" {
 		existingInstanceID = loadToken(tok, &hostName, &agentName)
+		fromNowFile = true
 	} else if len(args) > 0 && strings.HasSuffix(args[0], ".now") {
 		data, err := os.ReadFile(args[0])
 		if err != nil {
@@ -108,6 +110,7 @@ func main() {
 			os.Exit(1)
 		}
 		existingInstanceID = loadToken(strings.TrimSpace(string(data)), &hostName, &agentName)
+		fromNowFile = true
 		args = args[1:]
 	}
 
@@ -207,30 +210,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set up signal handler for cleanup
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigCh
-		fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, destroying %s...\n", sess.Name)
-		sess.Destroy()
-		os.Exit(130)
-	}()
-
-	// Send agent setup commands
-	if len(agent.Setup.Commands) > 0 {
-		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
-		for _, cmd := range agent.Setup.Commands {
-			if _, err := sess.Stream.Write([]byte(cmd + "\n")); err != nil {
-				fmt.Fprintf(os.Stderr, "nowbox: setup failed: %v\n", err)
-				sess.Destroy()
-				os.Exit(1)
-			}
-		}
-	}
-
-	fmt.Fprintf(os.Stderr, "  ready\n")
-
 	// Connect via selected client mode
 	hostAgent := fmt.Sprintf("%s/%s", host.Name, agent.Name)
 
@@ -264,18 +243,60 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 		return os.WriteFile(filename, []byte(script), 0755)
 	}
 
+	// Set up signal handler — smart default based on session origin
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		if fromNowFile {
+			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, saving session...\n")
+			saveFunc()
+			fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s.now\n", sess.Name)
+		} else {
+			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, destroying %s...\n", sess.Name)
+			sess.Destroy()
+		}
+		os.Exit(130)
+	}()
+
+	// Send agent setup commands
+	if len(agent.Setup.Commands) > 0 {
+		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
+		for _, cmd := range agent.Setup.Commands {
+			if _, err := sess.Stream.Write([]byte(cmd + "\n")); err != nil {
+				fmt.Fprintf(os.Stderr, "nowbox: setup failed: %v\n", err)
+				sess.Destroy()
+				os.Exit(1)
+			}
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "  ready\n")
+
 	for {
 		switch clientMode {
 		case "cli":
 			otherModes := modesExcept(allModes, "cli")
 			var nextMode string
-			nextMode, err = terminal.Proxy(sess.Stream, sess.Name, hostAgent, &terminal.ProxyOptions{
-				Modes:    otherModes,
-				SaveFunc: saveFunc,
+			var exitAction terminal.ExitAction
+			nextMode, exitAction, err = terminal.Proxy(sess.Stream, sess.Name, hostAgent, &terminal.ProxyOptions{
+				Modes:        otherModes,
+				SaveFunc:     saveFunc,
+				IsPersistent: fromNowFile,
 			})
 			if nextMode != "" {
 				clientMode = nextMode
 				continue
+			}
+			if exitAction == terminal.ExitKeep {
+				fmt.Fprintf(os.Stderr, "\nnowbox: saving session...\n")
+				if saveErr := saveFunc(); saveErr != nil {
+					fmt.Fprintf(os.Stderr, "  warning: could not save: %v\n", saveErr)
+				} else {
+					fmt.Fprintf(os.Stderr, "  saved: %s.now\n", sess.Name)
+				}
+				fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s.now\n", sess.Name)
+				return
 			}
 		case "browser":
 			err = webui.Serve(sess.Stream, sess.Name, hostAgent, &webui.SessionInfo{
@@ -301,9 +322,19 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 		break
 	}
 
-	// Teardown
-	fmt.Fprintf(os.Stderr, "\nnowbox: disconnected, destroying %s...\n", sess.Name)
-	sess.Destroy()
+	// Teardown — browser/app/mcp use smart default
+	if fromNowFile {
+		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected, saving session...\n")
+		if saveErr := saveFunc(); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "  warning: could not save: %v\n", saveErr)
+		} else {
+			fmt.Fprintf(os.Stderr, "  saved: %s.now\n", sess.Name)
+		}
+		fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s.now\n", sess.Name)
+	} else {
+		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected, destroying %s...\n", sess.Name)
+		sess.Destroy()
+	}
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "nowbox: %v\n", err)
