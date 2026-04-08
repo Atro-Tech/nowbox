@@ -218,6 +218,11 @@ func main() {
 
 	allModes := []string{"cli", "browser", "app", "mcp"}
 	saveFunc := func() error {
+		// Skip save if the .now file already has this instance ID
+		if existingInstanceID == sess.InstanceID && nowFilePath != "" {
+			return nil
+		}
+
 		keyVars := make(map[string]string)
 		for k, v := range sess.Vars {
 			if k == "SESSION_NAME" || k == "INSTANCE_ID" {
@@ -260,9 +265,8 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 	go func() {
 		<-sigCh
 		if fromNowFile {
-			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, saving session...\n")
 			saveFunc()
-			fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s\n", savePath)
+			fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
 		} else {
 			fmt.Fprintf(os.Stderr, "\nnowbox: interrupted, destroying %s...\n", sess.Name)
 			sess.Destroy()
@@ -300,13 +304,13 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 				continue
 			}
 			if exitAction == terminal.ExitKeep {
-				fmt.Fprintf(os.Stderr, "\nnowbox: saving session...\n")
 				if saveErr := saveFunc(); saveErr != nil {
-					fmt.Fprintf(os.Stderr, "  warning: could not save: %v\n", saveErr)
-				} else {
+					fmt.Fprintf(os.Stderr, "\n  warning: could not save: %v\n", saveErr)
+				}
+				fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
+				if existingInstanceID != sess.InstanceID {
 					fmt.Fprintf(os.Stderr, "  saved: %s\n", savePath)
 				}
-				fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s\n", savePath)
 				return
 			}
 		case "browser":
@@ -335,13 +339,13 @@ curl -fsSL nowbox.lol | sh -s -- "$@"
 
 	// Teardown — browser/app/mcp use smart default
 	if fromNowFile {
-		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected, saving session...\n")
 		if saveErr := saveFunc(); saveErr != nil {
-			fmt.Fprintf(os.Stderr, "  warning: could not save: %v\n", saveErr)
-		} else {
+			fmt.Fprintf(os.Stderr, "\n  warning: could not save: %v\n", saveErr)
+		}
+		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected — sandbox still running\n")
+		if existingInstanceID != sess.InstanceID {
 			fmt.Fprintf(os.Stderr, "  saved: %s\n", savePath)
 		}
-		fmt.Fprintf(os.Stderr, "  sandbox still running — reopen with: sh %s\n", savePath)
 	} else {
 		fmt.Fprintf(os.Stderr, "\nnowbox: disconnected, destroying %s...\n", sess.Name)
 		sess.Destroy()
