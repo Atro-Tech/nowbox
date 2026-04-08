@@ -93,6 +93,7 @@ func main() {
 	createMode := false
 	var existingInstanceID string
 	var nowFilePath string
+	var sessionName string
 	fromNowFile := false
 
 	// Check for "create" subcommand: nowbox create sprites claude
@@ -106,6 +107,8 @@ func main() {
 		sub.StringVar(&agentName, "a", agentName, "agent (short)")
 		sub.StringVar(&clientMode, "client", clientMode, "client mode")
 		sub.StringVar(&clientMode, "c", clientMode, "client mode (short)")
+		sub.StringVar(&sessionName, "name", "", "session name")
+		sub.StringVar(&sessionName, "n", "", "session name (short)")
 		sub.Parse(args[1:])
 		args = sub.Args()
 	}
@@ -203,7 +206,7 @@ func main() {
 
 	// Create mode — provision sandbox, write .now file, don't connect
 	if createMode {
-		createNowFile(host, agent, vars, clientMode)
+		createNowFile(host, agent, vars, clientMode, sessionName)
 		return
 	}
 
@@ -411,7 +414,7 @@ func resolveChoice(input string, options []string) string {
 	return choice
 }
 
-func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[string]string, clientMode string) {
+func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, vars map[string]string, clientMode string, sessionName string) {
 	// Filter vars to only include API keys
 	keyVars := make(map[string]string)
 	for k, v := range vars {
@@ -431,7 +434,9 @@ func createNowFile(host *manifest.HostManifest, agent *manifest.AgentManifest, v
 		os.Exit(1)
 	}
 
-	sessionName := names.Generate()
+	if sessionName == "" {
+		sessionName = names.Generate()
+	}
 	filename := sessionName + ".now"
 
 	clientFlag := ""
