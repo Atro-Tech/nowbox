@@ -95,9 +95,18 @@ func main() {
 	fromNowFile := false
 
 	// Check for "create" subcommand: nowbox create sprites claude
+	// Re-parse flags after "create" since Go's flag stops at the first non-flag arg
 	if len(args) > 0 && args[0] == "create" {
 		createMode = true
-		args = args[1:]
+		sub := flag.NewFlagSet("create", flag.ExitOnError)
+		sub.StringVar(&hostName, "host", hostName, "host provider")
+		sub.StringVar(&hostName, "h", hostName, "host provider (short)")
+		sub.StringVar(&agentName, "agent", agentName, "agent")
+		sub.StringVar(&agentName, "a", agentName, "agent (short)")
+		sub.StringVar(&clientMode, "client", clientMode, "client mode")
+		sub.StringVar(&clientMode, "c", clientMode, "client mode (short)")
+		sub.Parse(args[1:])
+		args = sub.Args()
 	}
 
 	// Check if first arg is a .now file or NOWBOX_TOKEN env var
