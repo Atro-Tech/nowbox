@@ -72,6 +72,11 @@ ws.binaryType = 'arraybuffer';
 ws.onopen = function() {
   // Send initial size
   ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  // Re-send after Claude starts to fix layout
+  setTimeout(function() {
+    fitAddon.fit();
+    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  }, 3000);
 };
 
 ws.onmessage = function(e) {
