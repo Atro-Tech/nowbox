@@ -89,10 +89,11 @@ if [ "$1" = "install" ]; then
 DIR="$(dirname "$0")"
 BIN="$DIR/nowbox-bin"
 
-# If a .now file was passed (double-click from Finder), open it
+# If a .now file was passed (double-click from Finder), open in browser mode
 if [ -n "$1" ] && echo "$1" | grep -q '\.now$'; then
-  osascript -e "tell application \"Terminal\" to do script \"sh '$1'\"" \
-            -e "tell application \"Terminal\" to activate"
+  export NOWBOX_TOKEN=$(grep 'NOWBOX_TOKEN=' "$1" | head -1 | sed 's/.*NOWBOX_TOKEN="//' | sed 's/".*//')
+  export NOWBOX_FILE="$1"
+  "$BIN" -client browser &
   exit 0
 fi
 
