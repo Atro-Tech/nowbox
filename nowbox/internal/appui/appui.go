@@ -45,10 +45,11 @@ var upgrader = websocket.Upgrader{
 
 // SessionInfo holds the data needed to save a .now file from the app UI.
 type SessionInfo struct {
-	HostName   string
-	AgentName  string
-	Vars       map[string]string
-	InstanceID string
+	HostName      string
+	AgentName     string
+	Vars          map[string]string
+	InstanceID    string
+	SetupCommands []string
 }
 
 // Serve opens a native window with the chat + TTY UI and blocks until it closes.
@@ -143,6 +144,7 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *Se
 		}()
 
 		// Window → remote
+		setupSent := false
 		for {
 			mt, data, err := conn.ReadMessage()
 			if err != nil {
@@ -159,6 +161,12 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *Se
 					if err := stream.Resize(msg.Cols, msg.Rows); err != nil {
 						finish()
 						return
+					}
+					if !setupSent && info != nil && len(info.SetupCommands) > 0 {
+						setupSent = true
+						for _, cmd := range info.SetupCommands {
+							stream.Write([]byte(cmd + "\n"))
+						}
 					}
 					continue
 				}

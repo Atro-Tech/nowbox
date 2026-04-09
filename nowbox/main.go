@@ -143,13 +143,13 @@ func main() {
 		clientMode = args[2]
 	}
 
-	// Browser mode doesn't need a TTY (runs headless, opens browser)
-	if clientMode != "browser" {
+	// Browser and app modes don't need a TTY (headless)
+	if clientMode != "browser" && clientMode != "app" {
 		initTTY()
 	}
 
-	// Check for orphan from previous crash — skip in browser mode (no TTY) and reconnects
-	if clientMode != "browser" {
+	// Check for orphan from previous crash — skip in headless modes (no TTY) and reconnects
+	if clientMode != "browser" && clientMode != "app" {
 	if orphan := session.CheckOrphan(); orphan != nil && orphan.InstanceID != existingInstanceID {
 		fmt.Fprintf(os.Stderr, "nowbox: orphan sandbox found: %s (%s on %s)\n",
 			orphan.SessionName, orphan.InstanceID, orphan.Provider)
@@ -308,7 +308,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 	}()
 
 	// Send agent setup commands (deferred to after first resize for browser mode)
-	if clientMode != "browser" && len(agent.Setup.Commands) > 0 {
+	if clientMode != "browser" && clientMode != "app" && len(agent.Setup.Commands) > 0 {
 		fmt.Fprintf(os.Stderr, "  setting up %s...\n", agent.Name)
 		for _, cmd := range agent.Setup.Commands {
 			if _, err := sess.Stream.Write([]byte(cmd + "\n")); err != nil {
@@ -358,10 +358,11 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 			})
 		case "app":
 			err = appui.Serve(sess.Stream, displayName, hostAgent, &appui.SessionInfo{
-				HostName:   host.Name,
-				AgentName:  agent.Name,
-				Vars:       sess.Vars,
-				InstanceID: sess.InstanceID,
+				HostName:      host.Name,
+				AgentName:     agent.Name,
+				Vars:          sess.Vars,
+				InstanceID:    sess.InstanceID,
+				SetupCommands: agent.Setup.Commands,
 			})
 		case "mcp":
 			err = mcpserver.Serve(host, sess.Stream, sess.InstanceID, sess.Name, agent.Name, sess.Vars)

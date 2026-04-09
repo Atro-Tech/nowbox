@@ -10,10 +10,11 @@ import (
 
 // SessionInfo holds the data needed to save a .now file from the app UI.
 type SessionInfo struct {
-	HostName   string
-	AgentName  string
-	Vars       map[string]string
-	InstanceID string
+	HostName      string
+	AgentName     string
+	Vars          map[string]string
+	InstanceID    string
+	SetupCommands []string
 }
 
 // Serve is a stub for builds without CGo. The native app window requires CGo.
