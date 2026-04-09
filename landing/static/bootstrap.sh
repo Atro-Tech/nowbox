@@ -125,8 +125,9 @@ class Delegate: NSObject, NSApplicationDelegate {
         }
     }
 }
+let delegate = Delegate()
 let app = NSApplication.shared
-app.delegate = Delegate()
+app.delegate = delegate
 app.run()
 SWIFT
     swiftc -O -o "$APP_DIR/Contents/MacOS/nowbox" "$CACHE_DIR/launcher.swift" 2>/dev/null
