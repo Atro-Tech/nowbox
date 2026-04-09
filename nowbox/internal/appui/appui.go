@@ -74,8 +74,11 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, version 
 	html = strings.ReplaceAll(html, "{{HOST_AGENT}}", hostAgent)
 	html = strings.ReplaceAll(html, "{{WS_PATH}}", wsPath)
 	html = strings.ReplaceAll(html, "{{VERSION}}", version)
-	html = strings.ReplaceAll(html, "{{CHAT_COMMAND}}", info.ChatCommand)
-	html = strings.ReplaceAll(html, "{{CHAT_FORMAT}}", info.ChatFormat)
+	// JSON-encode chat values so they're safe inside JS strings
+	chatCmdJSON, _ := json.Marshal(info.ChatCommand)
+	chatFmtJSON, _ := json.Marshal(info.ChatFormat)
+	html = strings.ReplaceAll(html, "'{{CHAT_COMMAND}}'", string(chatCmdJSON))
+	html = strings.ReplaceAll(html, "'{{CHAT_FORMAT}}'", string(chatFmtJSON))
 
 	mux := http.NewServeMux()
 

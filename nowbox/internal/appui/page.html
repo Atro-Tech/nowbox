@@ -111,7 +111,8 @@
   #send-btn:disabled { opacity: 0.3; cursor: default; }
   #send-btn svg { width: 18px; height: 18px; }
 
-  #tty-view { flex: 1; display: none; }
+  #tty-view { flex: 1; display: none; flex-direction: column; }
+  #tty-view .xterm { flex: 1; }
 
   #messages::-webkit-scrollbar { width: 6px; }
   #messages::-webkit-scrollbar-track { background: transparent; }
@@ -171,7 +172,13 @@ if (hasChat) {
 } else {
   tabGroup.innerHTML =
     '<button class="tab-btn active" onclick="switchTab(\'terminal\')">terminal</button>';
-  document.getElementById('tty-view').style.display = 'block';
+  document.getElementById('tty-view').style.display = 'flex';
+  initTTY();
+  setTimeout(function() {
+    fitAddon.fit();
+    if (ws.readyState === 1)
+      ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  }, 100);
 }
 
 // ANSI stripping
@@ -449,7 +456,7 @@ function switchTab(tab) {
     chatInput.focus();
   } else {
     chatView.style.display = 'none';
-    ttyView.style.display = 'block';
+    ttyView.style.display = 'flex';
     initTTY();
     setTimeout(function() {
       fitAddon.fit();
