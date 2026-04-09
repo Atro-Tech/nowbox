@@ -78,10 +78,12 @@
   }
   #tty-view {
     flex: 1;
-    display: none;
   }
 
   /* ── Chat ── */
+  #chat-view {
+    display: none;
+  }
   #messages {
     flex: 1;
     overflow-y: auto;
@@ -182,8 +184,8 @@
   <span class="spacer"></span>
   <a class="header-btn" href="{{SAVE_PATH}}" download>save</a>
   <div class="tab-group">
-    <button class="tab-btn active" onclick="switchTab('chat')">chat</button>
-    <button class="tab-btn" onclick="switchTab('tty')">tty</button>
+    <button class="tab-btn" onclick="switchTab('chat')">chat</button>
+    <button class="tab-btn active" onclick="switchTab('tty')">tty</button>
   </div>
 </div>
 
