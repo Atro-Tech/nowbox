@@ -79,11 +79,21 @@ if [ "$1" = "install" ]; then
     mkdir -p "$APP_DIR/Contents/MacOS"
     mkdir -p "$APP_DIR/Contents/Resources"
 
-    # Copy binary and ad-hoc sign to pass Gatekeeper
-    cp "$TMP" "$APP_DIR/Contents/MacOS/nowbox-bin"
+    # Download native (CGO) build for the .app bundle
+    APP_NAME="nowbox-${OS}-${ARCH}-app"
+    echo "nowbox: downloading native build..." >&2
+    APP_TMP="$CACHE_DIR/.nowbox-app-$$"
+    $FETCH "${BASE_URL}/${APP_NAME}" > "$APP_TMP" 2>/dev/null || {
+      echo "nowbox: native build not available, using standard binary" >&2
+      APP_TMP="$TMP"
+    }
+    chmod +x "$APP_TMP"
+
+    # Copy native binary into .app and ad-hoc sign
+    cp "$APP_TMP" "$APP_DIR/Contents/MacOS/nowbox-bin"
     chmod +x "$APP_DIR/Contents/MacOS/nowbox-bin"
     codesign --sign - --force "$APP_DIR/Contents/MacOS/nowbox-bin" 2>/dev/null
-    codesign --sign - --force "$APP_DIR" 2>/dev/null
+    [ "$APP_TMP" != "$TMP" ] && rm -f "$APP_TMP"
 
     # Compile native launcher — handles Finder "Open With" via Apple Events
     cat > "$CACHE_DIR/launcher.swift" << 'SWIFT'
@@ -101,7 +111,7 @@ class Delegate: NSObject, NSApplicationDelegate {
             }
             let task = Process()
             task.executableURL = URL(fileURLWithPath: bin)
-            task.arguments = ["-client", "browser"]
+            task.arguments = ["-client", "app"]
             task.environment = ProcessInfo.processInfo.environment
             task.environment?["NOWBOX_TOKEN"] = token
             task.environment?["NOWBOX_FILE"] = url.path
@@ -244,7 +254,8 @@ ICONSVG
 
     rm -f "$TMP"
 
-    # Register .now file association and set as default handler
+    # Sign the whole bundle and register file association
+    codesign --sign - --force --deep "$APP_DIR" 2>/dev/null
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_DIR" 2>/dev/null || true
     # Set nowbox as default for .now files using Swift (reliable on modern macOS)
     swift -e '

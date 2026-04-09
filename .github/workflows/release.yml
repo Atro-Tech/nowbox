@@ -50,8 +50,39 @@ jobs:
           name: nowbox-${{ matrix.goos }}-${{ matrix.goarch }}
           path: nowbox-*
 
+  build-macos-native:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - goarch: amd64
+          - goarch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: nowbox/go.mod
+
+      - name: Build with CGO (native webview)
+        working-directory: nowbox
+        env:
+          GOOS: darwin
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "1"
+          TOKEN_KEY: ${{ secrets.NOWBOX_TOKEN_KEY }}
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          go build -ldflags "-X 'github.com/nowbox/nowbox/internal/token.keyHex=${TOKEN_KEY}' -X 'main.Version=${VERSION}'" -o "../nowbox-darwin-${{ matrix.goarch }}-app" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nowbox-darwin-${{ matrix.goarch }}-app
+          path: nowbox-darwin-*-app
+
   release:
-    needs: build
+    needs: [build, build-macos-native]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
