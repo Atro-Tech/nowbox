@@ -53,7 +53,7 @@ type SessionInfo struct {
 }
 
 // Serve opens a native window with the chat + TTY UI and blocks until it closes.
-func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *SessionInfo) error {
+func Serve(stream adapter.Stream, sessionName string, hostAgent string, version string, info *SessionInfo) error {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return fmt.Errorf("starting app server: %w", err)
@@ -71,6 +71,7 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *Se
 	html = strings.ReplaceAll(html, "{{SESSION}}", sessionName)
 	html = strings.ReplaceAll(html, "{{HOST_AGENT}}", hostAgent)
 	html = strings.ReplaceAll(html, "{{WS_PATH}}", wsPath)
+	html = strings.ReplaceAll(html, "{{VERSION}}", version)
 
 	mux := http.NewServeMux()
 

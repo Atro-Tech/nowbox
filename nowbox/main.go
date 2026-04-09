@@ -357,7 +357,7 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 				SetupCommands: agent.Setup.Commands,
 			})
 		case "app":
-			err = appui.Serve(sess.Stream, displayName, hostAgent, &appui.SessionInfo{
+			err = appui.Serve(sess.Stream, displayName, hostAgent, Version, &appui.SessionInfo{
 				HostName:      host.Name,
 				AgentName:     agent.Name,
 				Vars:          sess.Vars,

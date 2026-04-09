@@ -18,6 +18,6 @@ type SessionInfo struct {
 }
 
 // Serve is a stub for builds without CGo. The native app window requires CGo.
-func Serve(stream adapter.Stream, sessionName string, hostAgent string, info *SessionInfo) error {
+func Serve(stream adapter.Stream, sessionName string, hostAgent string, version string, info *SessionInfo) error {
 	return fmt.Errorf("app mode requires CGo (native webview); use 'browser' or 'cli' mode instead")
 }
