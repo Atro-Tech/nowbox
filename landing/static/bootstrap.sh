@@ -36,7 +36,9 @@ else
 fi
 
 download_binary() {
-  echo "nowbox: downloading..." >&2
+  # Resolve version from GitHub API
+  VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"//;s/".*//' || echo "latest")
+  echo "nowbox: downloading ${VERSION}..." >&2
   mkdir -p "$CACHE_DIR"
   TMP="$CACHE_DIR/.nowbox-download-$$"
   $FETCH "${BASE_URL}/${NAME}" > "$TMP" 2>/dev/null || {
