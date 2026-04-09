@@ -79,9 +79,11 @@ if [ "$1" = "install" ]; then
     mkdir -p "$APP_DIR/Contents/MacOS"
     mkdir -p "$APP_DIR/Contents/Resources"
 
-    # Copy binary
+    # Copy binary and ad-hoc sign to pass Gatekeeper
     cp "$TMP" "$APP_DIR/Contents/MacOS/nowbox-bin"
     chmod +x "$APP_DIR/Contents/MacOS/nowbox-bin"
+    codesign --sign - --force "$APP_DIR/Contents/MacOS/nowbox-bin" 2>/dev/null
+    codesign --sign - --force "$APP_DIR" 2>/dev/null
 
     # Launcher script — handles double-click of .now files and direct launch
     cat > "$APP_DIR/Contents/MacOS/nowbox" << 'LAUNCHER'
