@@ -83,15 +83,25 @@ if [ "$1" = "install" ]; then
     cp "$TMP" "$APP_DIR/Contents/MacOS/nowbox-bin"
     chmod +x "$APP_DIR/Contents/MacOS/nowbox-bin"
 
-    # Launcher script — opens Terminal with nowbox
+    # Launcher script — handles double-click of .now files and direct launch
     cat > "$APP_DIR/Contents/MacOS/nowbox" << 'LAUNCHER'
 #!/bin/sh
 DIR="$(dirname "$0")"
+BIN="$DIR/nowbox-bin"
+
+# If a .now file was passed (double-click from Finder), open it
+if [ -n "$1" ] && echo "$1" | grep -q '\.now$'; then
+  osascript -e "tell application \"Terminal\" to do script \"sh '$1'\"" \
+            -e "tell application \"Terminal\" to activate"
+  exit 0
+fi
+
+# Direct terminal launch
 if [ -t 1 ]; then
-  exec "$DIR/nowbox-bin" "$@"
+  exec "$BIN" "$@"
 else
-  osascript -e "tell application \"Terminal\" to do script \"'$DIR/nowbox-bin'\""
-  osascript -e "tell application \"Terminal\" to activate"
+  osascript -e "tell application \"Terminal\" to do script \"'$BIN'\"" \
+            -e "tell application \"Terminal\" to activate"
 fi
 LAUNCHER
     chmod +x "$APP_DIR/Contents/MacOS/nowbox"
