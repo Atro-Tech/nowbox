@@ -143,9 +143,13 @@ func main() {
 		clientMode = args[2]
 	}
 
-	initTTY()
+	// Browser mode doesn't need a TTY (runs headless, opens browser)
+	if clientMode != "browser" {
+		initTTY()
+	}
 
-	// Check for orphan from previous crash — skip if we're reconnecting to it
+	// Check for orphan from previous crash — skip in browser mode (no TTY) and reconnects
+	if clientMode != "browser" {
 	if orphan := session.CheckOrphan(); orphan != nil && orphan.InstanceID != existingInstanceID {
 		fmt.Fprintf(os.Stderr, "nowbox: orphan sandbox found: %s (%s on %s)\n",
 			orphan.SessionName, orphan.InstanceID, orphan.Provider)
@@ -165,6 +169,7 @@ func main() {
 				}
 			}
 		}
+	}
 	}
 
 	if hostName == "" {
