@@ -144,6 +144,32 @@ LAUNCHER
       <string>nowbox session</string>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>lol.nowbox.session</string>
+      </array>
+    </dict>
+  </array>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>lol.nowbox.session</string>
+      <key>UTTypeDescription</key>
+      <string>nowbox session</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.shell-script</string>
+      </array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>now</string>
+        </array>
+      </dict>
     </dict>
   </array>
 </dict>
