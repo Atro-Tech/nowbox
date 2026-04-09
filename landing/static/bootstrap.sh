@@ -226,14 +226,20 @@ ICONSVG
 
     # Register .now file association and set as default handler
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_DIR" 2>/dev/null || true
-    # Force nowbox as default for .now files
-    defaults write com.apple.LaunchServices/com.apple.launchservices.secure LSHandlers -array-add \
-      '{LSHandlerContentType="lol.nowbox.session";LSHandlerRoleAll="lol.nowbox.app";}' 2>/dev/null || true
-    # Also claim by extension for older macOS
-    defaults write com.apple.LaunchServices/com.apple.launchservices.secure LSHandlers -array-add \
-      '{LSHandlerContentTag="now";LSHandlerContentTagClass="public.filename-extension";LSHandlerRoleAll="lol.nowbox.app";}' 2>/dev/null || true
-    # Reset Launch Services to pick up changes
-    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user 2>/dev/null || true
+    # Set nowbox as default for .now files using Swift (reliable on modern macOS)
+    swift -e '
+import Foundation
+import UniformTypeIdentifiers
+if #available(macOS 12.0, *) {
+  let ws = NSWorkspace.shared
+  let url = URL(fileURLWithPath: "/Applications/nowbox.app")
+  if let ut = UTType("lol.nowbox.session") {
+    ws.setDefaultApplication(at: url, toOpenContentType: ut) { error in
+      if let e = error { fputs("warn: \(e)\n", stderr) }
+    }
+  }
+}
+' 2>/dev/null || true
 
     echo "nowbox: installed to /Applications/nowbox.app" >&2
     echo "nowbox: .now files will open with nowbox" >&2
