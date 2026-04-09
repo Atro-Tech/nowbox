@@ -50,6 +50,8 @@ type SessionInfo struct {
 	Vars          map[string]string
 	InstanceID    string
 	SetupCommands []string
+	ChatCommand   string // e.g. "claude -p '${MESSAGE}' --output-format stream-json ..."
+	ChatFormat    string // "stream-json", "text", etc. Empty = no chat support
 }
 
 // Serve opens a native window with the chat + TTY UI and blocks until it closes.
@@ -72,6 +74,8 @@ func Serve(stream adapter.Stream, sessionName string, hostAgent string, version 
 	html = strings.ReplaceAll(html, "{{HOST_AGENT}}", hostAgent)
 	html = strings.ReplaceAll(html, "{{WS_PATH}}", wsPath)
 	html = strings.ReplaceAll(html, "{{VERSION}}", version)
+	html = strings.ReplaceAll(html, "{{CHAT_COMMAND}}", info.ChatCommand)
+	html = strings.ReplaceAll(html, "{{CHAT_FORMAT}}", info.ChatFormat)
 
 	mux := http.NewServeMux()
 

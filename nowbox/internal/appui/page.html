@@ -5,10 +5,8 @@
 <title>{{TITLE}}</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><style>path%7Bstroke:%23111%7D@media(prefers-color-scheme:dark)%7Bpath%7Bstroke:%23fff%7D%7D</style><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/><path d='m3.3 7 8.7 5 8.7-5'/><path d='M12 22V12'/></svg>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/marked@15.0.0/lib/marked.min.js">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
     background: #1a1a1a;
     display: flex;
@@ -18,7 +16,6 @@
     color: #e0e0e0;
   }
 
-  /* ── Header ── */
   #header {
     padding: 10px 20px;
     background: #1a1a1a;
@@ -31,127 +28,59 @@
     flex-shrink: 0;
   }
   #header .name { color: #e0e0e0; font-weight: 500; }
-  #header .sep { color: #333; }
   #header .spacer { flex: 1; }
   .header-btn {
-    font-family: inherit;
-    font-size: 12px;
-    padding: 4px 12px;
-    background: transparent;
-    color: #666;
-    border: 1px solid #333;
-    border-radius: 6px;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.15s;
+    font-family: inherit; font-size: 12px; padding: 4px 12px;
+    background: transparent; color: #666; border: 1px solid #333;
+    border-radius: 6px; cursor: pointer; text-decoration: none;
   }
   .header-btn:hover { color: #aaa; border-color: #555; }
-
-  .tab-group { display: flex; gap: 0; }
+  .tab-group { display: flex; }
   .tab-btn {
-    font-family: inherit;
-    font-size: 12px;
-    padding: 4px 14px;
-    background: transparent;
-    color: #666;
-    border: 1px solid #333;
-    cursor: pointer;
-    transition: all 0.15s;
+    font-family: inherit; font-size: 12px; padding: 4px 14px;
+    background: transparent; color: #666; border: 1px solid #333; cursor: pointer;
   }
   .tab-btn:first-child { border-radius: 6px 0 0 6px; }
   .tab-btn:last-child { border-radius: 0 6px 6px 0; border-left: none; }
   .tab-btn:hover { color: #aaa; }
   .tab-btn.active { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
 
-  /* ── Chat view ── */
+  /* Chat */
   #chat-view {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    max-width: 820px;
-    width: 100%;
-    margin: 0 auto;
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    max-width: 820px; width: 100%; margin: 0 auto;
   }
-
   #messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
+    flex: 1; overflow-y: auto; padding: 24px 20px;
+    display: flex; flex-direction: column; gap: 24px;
   }
-
   .msg { display: flex; gap: 14px; align-items: flex-start; }
   .msg-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 600;
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
   }
   .msg.user .msg-avatar { background: #2563eb; color: #fff; }
   .msg.agent .msg-avatar { background: #d4a574; color: #1a1a1a; }
-  .msg-body {
-    flex: 1;
-    min-width: 0;
-  }
-  .msg-role {
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: #999;
-  }
+  .msg-body { flex: 1; min-width: 0; }
+  .msg-role { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #999; }
   .msg-content {
-    font-size: 14px;
-    line-height: 1.7;
-    color: #ddd;
-    word-wrap: break-word;
+    font-size: 14px; line-height: 1.7; color: #ddd; word-wrap: break-word;
   }
   .msg-content code {
-    background: #2a2a2a;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
-    font-size: 13px;
+    background: #2a2a2a; padding: 2px 6px; border-radius: 4px;
+    font-family: 'SF Mono', 'Menlo', monospace; font-size: 13px;
   }
   .msg-content pre {
-    background: #111;
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
-    padding: 14px;
-    margin: 8px 0;
-    overflow-x: auto;
-    font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
-    font-size: 13px;
-    line-height: 1.5;
+    background: #111; border: 1px solid #2a2a2a; border-radius: 8px;
+    padding: 14px; margin: 8px 0; overflow-x: auto;
+    font-family: 'SF Mono', 'Menlo', monospace; font-size: 13px; line-height: 1.5;
   }
-  .msg-content pre code {
-    background: none;
-    padding: 0;
-  }
-  .msg.system { justify-content: center; }
-  .msg.system .msg-content {
-    color: #555;
-    font-size: 12px;
-    text-align: center;
-  }
+  .msg-content pre code { background: none; padding: 0; }
 
-  .typing-indicator {
-    display: inline-flex;
-    gap: 4px;
-    padding: 4px 0;
-  }
+  .typing-indicator { display: inline-flex; gap: 4px; padding: 4px 0; }
   .typing-indicator span {
-    width: 6px;
-    height: 6px;
-    background: #555;
-    border-radius: 50%;
+    width: 6px; height: 6px; background: #555; border-radius: 50%;
     animation: typing 1.2s ease-in-out infinite;
   }
   .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
@@ -161,78 +90,45 @@
     30% { opacity: 1; transform: scale(1); }
   }
 
-  /* ── Input ── */
-  #input-bar {
-    padding: 16px 20px 20px;
-    flex-shrink: 0;
-  }
+  #input-bar { padding: 16px 20px 20px; flex-shrink: 0; }
   #input-wrap {
-    background: #222;
-    border: 1px solid #333;
-    border-radius: 24px;
-    display: flex;
-    align-items: flex-end;
-    padding: 6px 6px 6px 18px;
-    transition: border-color 0.15s;
+    background: #222; border: 1px solid #333; border-radius: 24px;
+    display: flex; align-items: flex-end; padding: 6px 6px 6px 18px;
   }
   #input-wrap:focus-within { border-color: #555; }
   #input-wrap textarea {
-    flex: 1;
-    background: none;
-    color: #e0e0e0;
-    border: none;
-    font-family: inherit;
-    font-size: 15px;
-    resize: none;
-    outline: none;
-    line-height: 1.5;
-    padding: 8px 0;
-    min-height: 24px;
-    max-height: 150px;
+    flex: 1; background: none; color: #e0e0e0; border: none;
+    font-family: inherit; font-size: 15px; resize: none; outline: none;
+    line-height: 1.5; padding: 8px 0; min-height: 24px; max-height: 150px;
   }
   #input-wrap textarea::placeholder { color: #555; }
   #send-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: #d4a574;
-    color: #1a1a1a;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: background 0.15s;
+    width: 36px; height: 36px; border-radius: 50%; background: #d4a574;
+    color: #1a1a1a; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   #send-btn:hover { background: #e0b688; }
   #send-btn:disabled { opacity: 0.3; cursor: default; }
   #send-btn svg { width: 18px; height: 18px; }
 
-  /* ── TTY view ── */
   #tty-view { flex: 1; display: none; }
 
-  /* ── Scrollbar ── */
   #messages::-webkit-scrollbar { width: 6px; }
   #messages::-webkit-scrollbar-track { background: transparent; }
   #messages::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 </style>
 </head>
 <body>
-
 <div id="header">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4a574" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
   <span class="name">{{SESSION}}</span>
   <span style="color:#555; font-size:11px">{{VERSION}}</span>
   <span class="spacer"></span>
   <a class="header-btn" href="{{SAVE_PATH}}" download>save</a>
-  <div class="tab-group">
-    <button class="tab-btn active" onclick="switchTab('chat')">chat</button>
-    <button class="tab-btn" onclick="switchTab('terminal')">terminal</button>
-  </div>
+  <div class="tab-group" id="tab-group"></div>
 </div>
 
-<div id="chat-view">
+<div id="chat-view" style="display:none">
   <div id="messages"></div>
   <div id="input-bar">
     <div id="input-wrap">
@@ -243,23 +139,40 @@
     </div>
   </div>
 </div>
-
 <div id="tty-view"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
 <script>
-var currentTab = 'chat';
+// Config injected from Go
+var CHAT_COMMAND = '{{CHAT_COMMAND}}';
+var CHAT_FORMAT = '{{CHAT_FORMAT}}';
+var hasChat = CHAT_COMMAND.length > 0;
+
 var ws, term, fitAddon;
 var ttyInitialized = false;
-var setupDone = false;
+var setupSent = false;
+var currentTab = hasChat ? 'chat' : 'terminal';
 
-// Track conversation state
-var agentBuffer = '';
-var agentFlushTimer = null;
-var isAgentTyping = false;
-var currentAgentMsg = null;
-var ignoreOutput = true; // ignore setup command output
+// Chat state
+var chatActive = false;  // true while waiting for a claude -p response
+var chatBuffer = '';      // accumulates raw output during a chat response
+var chatFlushTimer = null;
+var fullResponse = '';
+var currentAgentEl = null;
+
+// Build tabs
+var tabGroup = document.getElementById('tab-group');
+if (hasChat) {
+  tabGroup.innerHTML =
+    '<button class="tab-btn active" onclick="switchTab(\'chat\')">chat</button>' +
+    '<button class="tab-btn" onclick="switchTab(\'terminal\')">terminal</button>';
+  document.getElementById('chat-view').style.display = 'flex';
+} else {
+  tabGroup.innerHTML =
+    '<button class="tab-btn active" onclick="switchTab(\'terminal\')">terminal</button>';
+  document.getElementById('tty-view').style.display = 'block';
+}
 
 // ANSI stripping
 function stripAnsi(s) {
@@ -272,138 +185,147 @@ function stripAnsi(s) {
     .replace(/\r/g, '');
 }
 
-// Detect when Claude Code is ready (prompt appears)
-function isPromptLine(text) {
-  return /[❯>]\s*$/.test(text.trim()) || /^\s*❯/.test(text);
-}
-
-// Detect setup noise
-function isSetupNoise(text) {
-  var noise = ['which claude', 'npm install', 'mkdir -p', 'printf', 'stty', 'claude.json',
-    'settings.json', 'skipDangerousMode', 'hasCompleted', 'hasTrust', 'spin()', 'SPIN=',
-    'nowbox is loading', 'launching claude', '/home/sprite', '/home/user', '/root',
-    'dangerously-skip', 'Loading conversations', '?2004', '?1004', '?2031', '?25',
-    '?2026', 'Resume Session', 'Search'];
-  for (var i = 0; i < noise.length; i++) {
-    if (text.indexOf(noise[i]) !== -1) return true;
-  }
-  return false;
-}
-
-function addMsg(type, content) {
-  var container = document.getElementById('messages');
-  var div = document.createElement('div');
-  div.className = 'msg ' + type;
-
-  if (type === 'system') {
-    div.innerHTML = '<div class="msg-content">' + escapeHtml(content) + '</div>';
-  } else {
-    var avatar = type === 'user' ? 'Y' : '✦';
-    var role = type === 'user' ? 'You' : 'Claude';
-    div.innerHTML =
-      '<div class="msg-avatar">' + avatar + '</div>' +
-      '<div class="msg-body">' +
-        '<div class="msg-role">' + role + '</div>' +
-        '<div class="msg-content">' + formatContent(content) + '</div>' +
-      '</div>';
-  }
-
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  return div;
-}
-
-function updateAgentMsg(content) {
-  if (!currentAgentMsg) {
-    currentAgentMsg = addMsg('agent', content);
-  } else {
-    var el = currentAgentMsg.querySelector('.msg-content');
-    if (el) el.innerHTML = formatContent(content);
-    var container = document.getElementById('messages');
-    container.scrollTop = container.scrollHeight;
-  }
-}
-
-function formatContent(text) {
-  // Simple markdown-ish rendering
-  text = escapeHtml(text);
-  // Code blocks
-  text = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-  // Inline code
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // Bold
-  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // Line breaks
-  text = text.replace(/\n/g, '<br>');
-  return text;
-}
-
 function escapeHtml(s) {
   var d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
 }
 
+function formatContent(text) {
+  text = escapeHtml(text);
+  text = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/\n/g, '<br>');
+  return text;
+}
+
+function addMsg(type, content) {
+  var container = document.getElementById('messages');
+  var div = document.createElement('div');
+  div.className = 'msg ' + type;
+  if (type === 'user') {
+    div.innerHTML =
+      '<div class="msg-avatar">Y</div>' +
+      '<div class="msg-body"><div class="msg-role">You</div>' +
+      '<div class="msg-content">' + formatContent(content) + '</div></div>';
+  } else {
+    div.innerHTML =
+      '<div class="msg-avatar">✦</div>' +
+      '<div class="msg-body"><div class="msg-role">Claude</div>' +
+      '<div class="msg-content">' + formatContent(content) + '</div></div>';
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
 function showTyping() {
-  if (isAgentTyping) return;
-  isAgentTyping = true;
   var container = document.getElementById('messages');
   var div = document.createElement('div');
   div.className = 'msg agent';
   div.id = 'typing-msg';
   div.innerHTML =
     '<div class="msg-avatar">✦</div>' +
-    '<div class="msg-body">' +
-      '<div class="msg-role">Claude</div>' +
-      '<div class="typing-indicator"><span></span><span></span><span></span></div>' +
-    '</div>';
+    '<div class="msg-body"><div class="msg-role">Claude</div>' +
+    '<div class="typing-indicator"><span></span><span></span><span></span></div></div>';
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
 
 function hideTyping() {
-  isAgentTyping = false;
   var el = document.getElementById('typing-msg');
   if (el) el.remove();
 }
 
-// Accumulate and flush agent output
-var fullAgentResponse = '';
-
-function flushAgentBuffer() {
-  if (!agentBuffer) return;
-  var raw = agentBuffer;
-  agentBuffer = '';
-
-  var clean = stripAnsi(raw).trim();
-  if (!clean) return;
-
-  // Skip setup noise
-  if (ignoreOutput && isSetupNoise(clean)) return;
-
-  // Detect when Claude's prompt appears (setup done, ready for input)
-  if (ignoreOutput && isPromptLine(clean)) {
-    ignoreOutput = false;
-    return;
-  }
-
-  if (ignoreOutput) return;
-
-  // If it's a prompt line, finalize current response
-  if (isPromptLine(clean)) {
-    if (fullAgentResponse) {
-      hideTyping();
-      updateAgentMsg(fullAgentResponse.trim());
-      currentAgentMsg = null;
-      fullAgentResponse = '';
-    }
-    return;
-  }
-
-  // Accumulate response
+function updateAgentMsg(content) {
   hideTyping();
-  fullAgentResponse += clean + '\n';
-  updateAgentMsg(fullAgentResponse.trim());
+  if (!currentAgentEl) {
+    currentAgentEl = addMsg('agent', content);
+  } else {
+    var el = currentAgentEl.querySelector('.msg-content');
+    if (el) el.innerHTML = formatContent(content);
+    document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+  }
+}
+
+// Parse stream-json output from claude -p
+function processStreamJson(raw) {
+  var lines = raw.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+
+    // Strip any ANSI codes that leaked in
+    line = stripAnsi(line);
+    if (!line) continue;
+
+    try {
+      var evt = JSON.parse(line);
+    } catch(e) {
+      continue; // not JSON, skip
+    }
+
+    // stream-json events: assistant message content
+    if (evt.type === 'assistant' && evt.message) {
+      // Full message event
+      var content = '';
+      if (evt.message.content) {
+        for (var j = 0; j < evt.message.content.length; j++) {
+          var block = evt.message.content[j];
+          if (block.type === 'text') content += block.text;
+        }
+      }
+      if (content) {
+        fullResponse = content;
+        updateAgentMsg(fullResponse);
+      }
+    }
+    // Content block delta (streaming)
+    if (evt.type === 'content_block_delta' && evt.delta) {
+      if (evt.delta.type === 'text_delta' && evt.delta.text) {
+        fullResponse += evt.delta.text;
+        updateAgentMsg(fullResponse);
+      }
+    }
+    // Result event (final)
+    if (evt.type === 'result') {
+      if (evt.result) {
+        fullResponse = evt.result;
+        updateAgentMsg(fullResponse);
+      }
+      chatActive = false;
+      currentAgentEl = null;
+      fullResponse = '';
+      document.getElementById('send-btn').disabled = false;
+      document.getElementById('chat-input').disabled = false;
+      document.getElementById('chat-input').focus();
+    }
+  }
+}
+
+// Process raw PTY output during chat mode
+function flushChatBuffer() {
+  if (!chatBuffer) return;
+  var raw = chatBuffer;
+  chatBuffer = '';
+
+  if (CHAT_FORMAT === 'stream-json') {
+    processStreamJson(raw);
+  } else {
+    // Plain text fallback — just show whatever came back
+    var clean = stripAnsi(raw).trim();
+    if (clean) {
+      fullResponse += clean + '\n';
+      updateAgentMsg(fullResponse.trim());
+    }
+  }
+}
+
+// Detect when the shell prompt returns (command finished)
+function hasShellPrompt(text) {
+  // Common shell prompts: $, #, %, ❯
+  return /[\$#%❯]\s*$/.test(stripAnsi(text).trim());
 }
 
 // WebSocket
@@ -411,52 +333,79 @@ ws = new WebSocket('ws://' + location.host + '{{WS_PATH}}');
 ws.binaryType = 'arraybuffer';
 
 ws.onopen = function() {
-  ws.send(JSON.stringify({ type: 'resize', cols: 100, rows: 40 }));
-  setTimeout(function() {
-    ws.send(JSON.stringify({ type: 'resize', cols: 100, rows: 40 }));
-  }, 3000);
+  var cols = hasChat ? 120 : 80;
+  var rows = hasChat ? 50 : 24;
+  ws.send(JSON.stringify({ type: 'resize', cols: cols, rows: rows }));
 };
 
 ws.onmessage = function(e) {
   if (!(e.data instanceof ArrayBuffer)) return;
   var bytes = new Uint8Array(e.data);
+
+  // Always feed to xterm if initialized
   if (term) term.write(bytes);
 
-  var text = new TextDecoder().decode(bytes);
-  agentBuffer += text;
-  clearTimeout(agentFlushTimer);
-  agentFlushTimer = setTimeout(flushAgentBuffer, 200);
+  // Route to chat parser if in chat mode
+  if (chatActive) {
+    var text = new TextDecoder().decode(bytes);
+    chatBuffer += text;
+    clearTimeout(chatFlushTimer);
+    chatFlushTimer = setTimeout(flushChatBuffer, 100);
+
+    // Check if command finished (shell prompt returned)
+    if (hasShellPrompt(text)) {
+      setTimeout(function() {
+        flushChatBuffer();
+        if (chatActive) {
+          // Command finished but no result event — finalize
+          chatActive = false;
+          if (fullResponse) {
+            updateAgentMsg(fullResponse.trim());
+          }
+          currentAgentEl = null;
+          fullResponse = '';
+          document.getElementById('send-btn').disabled = false;
+          document.getElementById('chat-input').disabled = false;
+          document.getElementById('chat-input').focus();
+        }
+      }, 300);
+    }
+  }
 };
 
 ws.onclose = function() {
-  addMsg('system', 'disconnected');
   document.getElementById('send-btn').disabled = true;
   document.getElementById('chat-input').disabled = true;
 };
 
-// Chat input
+// Send chat message via claude -p
 function sendChat() {
   var input = document.getElementById('chat-input');
   var text = input.value.trim();
-  if (!text || ws.readyState !== 1) return;
-
-  // Finalize any pending agent response
-  if (fullAgentResponse) {
-    hideTyping();
-    updateAgentMsg(fullAgentResponse.trim());
-    currentAgentMsg = null;
-    fullAgentResponse = '';
-  }
+  if (!text || ws.readyState !== 1 || chatActive) return;
 
   addMsg('user', text);
   showTyping();
   input.value = '';
   input.style.height = 'auto';
+  input.disabled = true;
+  document.getElementById('send-btn').disabled = true;
+
+  chatActive = true;
+  fullResponse = '';
+  currentAgentEl = null;
+  chatBuffer = '';
+
+  // Build the command by replacing ${MESSAGE}
+  // Shell-escape single quotes in user message
+  var escaped = text.replace(/'/g, "'\\''");
+  var cmd = CHAT_COMMAND.replace('${MESSAGE}', escaped);
 
   var enc = new TextEncoder();
-  ws.send(enc.encode(text + '\n'));
+  ws.send(enc.encode(cmd + '\n'));
 }
 
+// Input handling
 var chatInput = document.getElementById('chat-input');
 chatInput.addEventListener('input', function() {
   this.style.height = 'auto';
@@ -474,8 +423,7 @@ function initTTY() {
   if (ttyInitialized) return;
   ttyInitialized = true;
   term = new Terminal({
-    cursorBlink: true,
-    fontSize: 14,
+    cursorBlink: true, fontSize: 14,
     fontFamily: "'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
     theme: { background: '#1a1a1a', foreground: '#e0e0e0' }
   });
@@ -483,10 +431,7 @@ function initTTY() {
   term.loadAddon(fitAddon);
   term.open(document.getElementById('tty-view'));
   term.onData(function(data) {
-    if (ws.readyState === 1) {
-      var enc = new TextEncoder();
-      ws.send(enc.encode(data));
-    }
+    if (ws.readyState === 1) ws.send(new TextEncoder().encode(data));
   });
 }
 
@@ -498,36 +443,34 @@ function switchTab(tab) {
   });
   var chatView = document.getElementById('chat-view');
   var ttyView = document.getElementById('tty-view');
-
   if (tab === 'chat') {
     chatView.style.display = 'flex';
     ttyView.style.display = 'none';
-    document.getElementById('chat-input').focus();
+    chatInput.focus();
   } else {
     chatView.style.display = 'none';
     ttyView.style.display = 'block';
     initTTY();
     setTimeout(function() {
       fitAddon.fit();
-      if (ws.readyState === 1) {
+      if (ws.readyState === 1)
         ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-      }
       term.focus();
     }, 0);
   }
 }
 
+// Init
+if (!hasChat) initTTY();
+if (hasChat) chatInput.focus();
+
 window.addEventListener('resize', function() {
   if (currentTab === 'terminal' && fitAddon) {
     fitAddon.fit();
-    if (ws.readyState === 1) {
+    if (ws.readyState === 1)
       ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-    }
   }
 });
-
-// Focus input on load
-chatInput.focus();
 </script>
 </body>
 </html>

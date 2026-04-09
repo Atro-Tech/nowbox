@@ -9,6 +9,10 @@ commands = [
   "stty echo 2>/dev/null; clear; printf '\\n\\033[90m'; S='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'; spin() { while true; do for c in $(echo $S | sed 's/./& /g'); do printf \"\\r  $c nowbox is loading claude...\"; sleep 0.1; done; done; }; spin & SPIN=$!; if find ~/.claude -name '*.jsonl' 2>/dev/null | grep -q .; then R='--resume'; else R=''; fi; kill $SPIN 2>/dev/null; printf '\\r\\033[K\\033[0m'; claude --dangerously-skip-permissions $R"
 ]
 
+[chat]
+command = "claude -p '${MESSAGE}' --output-format stream-json --dangerously-skip-permissions --verbose --resume"
+format = "stream-json"
+
 [keys]
 optional = ["ANTHROPIC_API_KEY"]
 self_auth = true

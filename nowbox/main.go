@@ -363,6 +363,8 @@ curl -fsSL nowbox.lol | sh -s --%s "$@"
 				Vars:          sess.Vars,
 				InstanceID:    sess.InstanceID,
 				SetupCommands: agent.Setup.Commands,
+				ChatCommand:   agent.Chat.Command,
+				ChatFormat:    agent.Chat.Format,
 			})
 		case "mcp":
 			err = mcpserver.Serve(host, sess.Stream, sess.InstanceID, sess.Name, agent.Name, sess.Vars)

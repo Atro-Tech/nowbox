@@ -48,10 +48,16 @@ type AgentManifest struct {
 	Description string     `toml:"description"`
 	Setup       AgentSetup `toml:"setup"`
 	Keys        AgentKeys  `toml:"keys"`
+	Chat        AgentChat  `toml:"chat"`
 }
 
 type AgentSetup struct {
 	Commands []string `toml:"commands"`
+}
+
+type AgentChat struct {
+	Command string `toml:"command"` // e.g. "claude -p '${MESSAGE}' --output-format stream-json --resume"
+	Format  string `toml:"format"`  // "stream-json", "text", "jsonl"
 }
 
 type AgentKeys struct {
