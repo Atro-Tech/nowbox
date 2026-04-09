@@ -85,29 +85,49 @@ if [ "$1" = "install" ]; then
     codesign --sign - --force "$APP_DIR/Contents/MacOS/nowbox-bin" 2>/dev/null
     codesign --sign - --force "$APP_DIR" 2>/dev/null
 
-    # Launcher script — handles double-click of .now files and direct launch
-    cat > "$APP_DIR/Contents/MacOS/nowbox" << 'LAUNCHER'
+    # Compile native launcher — handles Finder "Open With" via Apple Events
+    cat > "$CACHE_DIR/launcher.swift" << 'SWIFT'
+import Cocoa
+
+class Delegate: NSObject, NSApplicationDelegate {
+    func application(_ app: NSApplication, open urls: [URL]) {
+        let bin = Bundle.main.url(forAuxiliaryExecutable: "nowbox-bin")!.path
+        for url in urls where url.pathExtension == "now" {
+            guard let content = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            var token = ""
+            if let r = content.range(of: "NOWBOX_TOKEN=\""),
+               let end = content[r.upperBound...].firstIndex(of: "\"") {
+                token = String(content[r.upperBound..<end])
+            }
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: bin)
+            task.arguments = ["-client", "browser"]
+            task.environment = ProcessInfo.processInfo.environment
+            task.environment?["NOWBOX_TOKEN"] = token
+            task.environment?["NOWBOX_FILE"] = url.path
+            try? task.run()
+        }
+    }
+    func applicationDidFinishLaunching(_ n: Notification) {
+        // Quit if launched without files (e.g. clicking dock icon)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            NSApp.terminate(nil)
+        }
+    }
+}
+let app = NSApplication.shared
+app.delegate = Delegate()
+app.run()
+SWIFT
+    swiftc -O -o "$APP_DIR/Contents/MacOS/nowbox" "$CACHE_DIR/launcher.swift" 2>/dev/null
+    rm -f "$CACHE_DIR/launcher.swift"
+
+    # Also keep a shell entry point for CLI use
+    cat > "$APP_DIR/Contents/MacOS/nowbox-cli" << 'SHIM'
 #!/bin/sh
-DIR="$(dirname "$0")"
-BIN="$DIR/nowbox-bin"
-
-# If a .now file was passed (double-click from Finder), open in browser mode
-if [ -n "$1" ] && echo "$1" | grep -q '\.now$'; then
-  export NOWBOX_TOKEN=$(grep 'NOWBOX_TOKEN=' "$1" | head -1 | sed 's/.*NOWBOX_TOKEN="//' | sed 's/".*//')
-  export NOWBOX_FILE="$1"
-  "$BIN" -client browser &
-  exit 0
-fi
-
-# Direct terminal launch
-if [ -t 1 ]; then
-  exec "$BIN" "$@"
-else
-  osascript -e "tell application \"Terminal\" to do script \"'$BIN'\"" \
-            -e "tell application \"Terminal\" to activate"
-fi
-LAUNCHER
-    chmod +x "$APP_DIR/Contents/MacOS/nowbox"
+exec "$(dirname "$0")/nowbox-bin" "$@"
+SHIM
+    chmod +x "$APP_DIR/Contents/MacOS/nowbox-cli"
 
     # Info.plist
     cat > "$APP_DIR/Contents/Info.plist" << 'PLIST'
